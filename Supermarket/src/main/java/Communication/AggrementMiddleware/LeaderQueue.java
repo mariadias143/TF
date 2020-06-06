@@ -1,7 +1,5 @@
 package Communication.AggrementMiddleware;
 
-import Communication.Communication;
-
 import java.util.ArrayList;
 import java.util.List;
 

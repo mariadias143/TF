@@ -13,6 +13,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ServerBroadCastListener implements AdvancedMessageListener {
     private StubRequest<Mensagem> stub;
@@ -23,6 +25,7 @@ public class ServerBroadCastListener implements AdvancedMessageListener {
     private boolean hasStarted;
     private Map<Integer,PendingMsg> pendingMsgMap;
     private Set<String> view;
+    private boolean iamleader;
 
 
     public ServerBroadCastListener(StubRequest<Mensagem> stub,Serializer s,String id,ServerGroupCom com){
@@ -34,11 +37,16 @@ public class ServerBroadCastListener implements AdvancedMessageListener {
         this.queue = new LeaderQueue();
         this.pendingMsgMap = new HashMap<>();
         this.view = new HashSet<>();
+        this.iamleader = false;
     }
 
     @Override
     public void membershipMessageReceived(SpreadMessage spreadMessage){
         MembershipInfo info = spreadMessage.getMembershipInfo();
+
+        //discard msg do grupo dos clientes
+        if (!info.getGroup().toString().equals("Servidores"))
+            return;
 
         if (info.isCausedByJoin() && !hasStarted){
             String join_code = info.getJoined().toString().split("#")[1];
@@ -62,6 +70,11 @@ public class ServerBroadCastListener implements AdvancedMessageListener {
         //update view
         if (info.isCausedByJoin() | info.isCausedByLeave() | info.isCausedByDisconnect()){
             //atualizar as views das mensagens
+            if (this.iamleader == false && queue.isLeader(this.id)){
+                this.iamleader = true;
+                this.com.updateLeader();
+            }
+
             synchronized (this.pendingMsgMap){
                 synchronized (this.view){
                     this.view = new HashSet<>();
@@ -72,12 +85,18 @@ public class ServerBroadCastListener implements AdvancedMessageListener {
                 }
                 this.pendingMsgMap.values().forEach(a -> a.updateView(this.view));
             }
-            //atualizar a view do server
         }
     }
 
     @Override
     public void regularMessageReceived(SpreadMessage spreadMessage) {
+        Pattern p = Pattern.compile("#SerV*");
+        Matcher mat = p.matcher(spreadMessage.getSender().toString());
+        if (!mat.find()) {
+            return;
+        }
+
+
         if (spreadMessage.isRegular() && spreadMessage.isSafe()){
             //atualizar o estado
             String sender =  spreadMessage.getSender().toString().split("#")[1];
@@ -109,11 +128,10 @@ public class ServerBroadCastListener implements AdvancedMessageListener {
             PendingMsg msg = this.pendingMsgMap.get(clock);
 
             assert msg != null;
-            System.out.println("Ola");
             msg.acknowledge(ack);
             if (msg.mayDeliver()){
                 //deliver ao stub
-                this.stub.handleRequest(msg.getMessage());
+                this.stub.handleResponse(msg.getMessage());
                 pendingMsgMap.remove(clock);
             }
         }

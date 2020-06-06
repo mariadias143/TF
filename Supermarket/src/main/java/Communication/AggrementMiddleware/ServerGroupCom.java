@@ -21,15 +21,18 @@ public class ServerGroupCom {
     private Lock l;
     private ServerBroadCastListener listener;
     private int clock;
+    private StubRequest stub;
 
     public ServerGroupCom(Serializer s, StubRequest stub){
         Random randomGenerator = new Random();
         int randomInt = randomGenerator.nextInt(100000);
         this.privateName =  "SerV" + randomInt;
+        System.out.println(this.privateName);
         this.clock = 0;
         this.l = new ReentrantLock();
         this.connection = new SpreadConnection();
         this.s = s;
+        this.stub = stub;
         this.listener = new ServerBroadCastListener(stub,s,this.privateName,this);
         try{
             connection.connect(InetAddress.getByName("localhost"), 0,
@@ -91,6 +94,22 @@ public class ServerGroupCom {
         try{
             l.lock();
             this.clock = clock;
+        }
+        finally {
+            l.unlock();
+        }
+    }
+
+    public void updateLeader(){
+        try{
+            l.lock();
+            ClientServerListener c_listener = new ClientServerListener(this.stub,this.s);
+            SpreadGroup group = new SpreadGroup();
+            group.join(connection,"Clientes");
+            connection.add(c_listener);
+        }
+        catch (Exception e){
+            e.printStackTrace();
         }
         finally {
             l.unlock();

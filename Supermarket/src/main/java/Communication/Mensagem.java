@@ -8,6 +8,7 @@ public class Mensagem<T>{
     public String idClient; // 0 id
     public String type;
     public String privateSender = "";
+    public String clientIP = "";
     public int clock = 0;
     public T info;
 
@@ -28,6 +29,8 @@ public class Mensagem<T>{
     public void setPrivateSender(String id){
         this.privateSender = id;
     }
+
+    public void setClientIP(String ip) { this.clientIP = ip; }
 
     public void setClock(int clock) {this.clock = clock;}
 }

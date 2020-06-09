@@ -14,6 +14,7 @@ public class TestServer {
                 .addType(Mensagem.class)
                 .addType(StateUpdate.class)
                 .build();
+
         ServerTestStub stub = new ServerTestStub(s);
 
         if (args.length > 1) {

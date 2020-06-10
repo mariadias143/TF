@@ -47,6 +47,23 @@ public class ServerGroupCom {
         }
     }
 
+    public void state_request(Mensagem m,int timestamp){
+        m.setPrivateSender(this.privateName);
+        m.setClock(timestamp);
+        SpreadMessage message = new SpreadMessage();
+        message.setSafe();
+        message.addGroup("Servidores");
+        message.setData(this.s.encode(m));
+
+        try{
+            //add ao listener para acks
+            connection.multicast(message);
+        }
+        catch (SpreadException e){
+            e.printStackTrace();
+        }
+    }
+
     public int multicast(Mensagem m,Mensagem state){
         m.setPrivateSender(this.privateName);
         state.setPrivateSender(this.privateName);

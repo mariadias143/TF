@@ -10,6 +10,7 @@ public class Mensagem<T>{
     public String privateSender = "";
     public String clientIP = "";
     public int clock = 0;
+    public int StubClock = 0;
     public T info;
 
     public Mensagem(String idClient, String type, T object){
@@ -33,4 +34,6 @@ public class Mensagem<T>{
     public void setClientIP(String ip) { this.clientIP = ip; }
 
     public void setClock(int clock) {this.clock = clock;}
+
+    public void setClockStub(int clock) {this.StubClock = clock;}
 }

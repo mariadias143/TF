@@ -48,4 +48,8 @@ public class Produto {
     public String toString(){
         return "Servidor.Produto [id:"+this.id+" nome:"+this.nome+" preco:"+this.preco+" stock:"+this.stock+"]";
     }
+
+    public void updateStock(int qnt){
+        this.stock += qnt;
+    }
 }

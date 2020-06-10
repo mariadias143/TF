@@ -9,10 +9,9 @@ import spread.MembershipInfo;
 import spread.SpreadGroup;
 import spread.SpreadMessage;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -26,6 +25,8 @@ public class ServerBroadCastListener implements AdvancedMessageListener {
     private Map<Integer,PendingMsg> pendingMsgMap;
     private Set<String> view;
     private boolean iamleader;
+    private List<StateUpdate> pendingUpdates;
+    private Lock l;
 
 
     public ServerBroadCastListener(StubRequest<Mensagem> stub,Serializer s,String id,ServerGroupCom com){
@@ -38,6 +39,8 @@ public class ServerBroadCastListener implements AdvancedMessageListener {
         this.pendingMsgMap = new HashMap<>();
         this.view = new HashSet<>();
         this.iamleader = false;
+        this.pendingUpdates = new ArrayList<>();
+        this.l = new ReentrantLock();
     }
 
     @Override
@@ -48,7 +51,7 @@ public class ServerBroadCastListener implements AdvancedMessageListener {
         if (!info.getGroup().toString().equals("Servidores"))
             return;
 
-        if (info.isCausedByJoin() && !hasStarted){
+        if (info.isCausedByJoin() && this.queue.isEmpty()){
             String join_code = info.getJoined().toString().split("#")[1];
             for (SpreadGroup group : info.getMembers()) {
                 String code = group.toString().split("#")[1];
@@ -56,7 +59,19 @@ public class ServerBroadCastListener implements AdvancedMessageListener {
                     this.queue.add(code);
             }
             this.queue.add(join_code);
-            hasStarted = true;
+            //sou o unico server
+            if (info.getMembers().length == 1){
+                try{
+                    l.lock();
+                    this.hasStarted = true;
+                }
+                finally {
+                    l.unlock();
+                }
+            }
+            else{
+                stub.askState();
+            }
         }
         else if (info.isCausedByDisconnect()){
             String name = info.getDisconnected().toString().split("#")[1];
@@ -102,12 +117,34 @@ public class ServerBroadCastListener implements AdvancedMessageListener {
             String sender =  spreadMessage.getSender().toString().split("#")[1];
             Mensagem<StateUpdate> m = this.s.decode(spreadMessage.getData());
             //sou o leader e recebi o pedido
-            if(queue.isLeader(this.id) && this.id.equals(sender)){
+            if(queue.isLeader(this.id) && this.id.equals(sender) && m.type.equals("STATEU")){
+                stub.setState(m.info);
                 this.deliverMessage(this.id,m.clock);
             }
-            else if (!queue.isLeader(this.id) && !this.id.equals(sender)){
-                stub.setState(m.info);
+            //transferência de estado, guarda as mensagens
+            else if (!queue.isLeader(this.id) && !this.id.equals(sender) && m.type.equals("STATEU")){
+                boolean flag = false;
+                try{
+                    l.lock();
+                    flag = this.hasStarted;
+                    if(!flag){
+                        this.pendingUpdates.add(m.info);
+                        System.out.println("Estado pendente");
+                    }
+                }
+                finally {
+                    l.unlock();
+                }
+
+                if (flag){
+                    stub.setState(m.info);
+                }
                 com.sendMessage(new Mensagem("ACK",m.clock,m.privateSender),spreadMessage.getSender());
+            }
+            //pedido para enviar o estado
+            else if (queue.isLeader(this.id) && !this.id.equals(sender) && m.type.equals("ASKSTATE")){
+                System.out.println("Recebi pedido de copia do stado");
+                stub.transferState(m.StubClock,spreadMessage.getSender());
             }
         }
         else if (spreadMessage.isRegular() && spreadMessage.isReliable()){
@@ -115,6 +152,21 @@ public class ServerBroadCastListener implements AdvancedMessageListener {
             Mensagem m = this.s.decode(spreadMessage.getData());
             if(queue.isLeader(this.id) && m.privateSender.equals(this.id)){
                 this.deliverMessage(sender,m.clock);
+            }
+            //transferência de estado replica a receber o pedido
+            else if(m.type.equals("STATE")){
+                System.out.println("Recebi estado");
+                List<StateUpdate> updates = (List<StateUpdate>) m.info;
+                try{
+                    l.lock();
+                    this.pendingUpdates.forEach(a -> updates.add(a));
+                    this.pendingUpdates = new ArrayList<>();
+                    this.hasStarted = true;
+                }
+                finally {
+                    l.unlock();
+                }
+                stub.setStates(updates);
             }
         }
     }

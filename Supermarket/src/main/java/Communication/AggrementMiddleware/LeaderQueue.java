@@ -21,6 +21,10 @@ public class LeaderQueue {
         }
     }
 
+    public synchronized boolean isEmpty(){
+        return size == 0;
+    }
+
     public synchronized void add(String s){
         queue.add(s);
         size++;

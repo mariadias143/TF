@@ -3,7 +3,6 @@ package Communication.AggrementMiddleware;
 import Communication.Mensagem;
 import Communication.StubRequest;
 import io.atomix.utils.serializer.Serializer;
-import spread.AdvancedMessageListener;
 import spread.BasicMessageListener;
 import spread.SpreadMessage;
 
@@ -29,7 +28,7 @@ public class ClientServerListener implements BasicMessageListener {
         }
 
         if(spreadMessage.isRegular() && spreadMessage.isReliable()){
-            String sender =  spreadMessage.getSender().toString().split("#")[1];
+            String sender =  spreadMessage.getSender().toString();
             Mensagem m = this.s.decode(spreadMessage.getData());
             m.setClientIP(sender);
             stub.handleRequest(m);

@@ -93,6 +93,19 @@ public class ServerGroupCom {
         return id;
     }
 
+    public void send(Mensagem m){
+        SpreadMessage message = new SpreadMessage();
+        message.setReliable();
+        message.addGroup(m.clientIP);
+        message.setData(this.s.encode(m));
+        try{
+            connection.multicast(message);
+        }
+        catch (SpreadException e){
+            e.printStackTrace();
+        }
+    }
+
     public void sendMessage(Mensagem m, SpreadGroup sender){
         SpreadMessage message = new SpreadMessage();
         message.setReliable();

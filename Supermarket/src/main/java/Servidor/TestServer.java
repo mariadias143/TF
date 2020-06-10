@@ -1,5 +1,6 @@
 package Servidor;
 
+import Cliente.Triple;
 import Communication.Mensagem;
 import Communication.StateUpdate;
 import io.atomix.utils.serializer.Serializer;
@@ -17,10 +18,12 @@ public class TestServer {
                 .addType(List.class)
                 .addType(ArrayList.class)
                 .addType(Pair.class)
+                .addType(Triple.class)
+                .addType(Produto.class)
                 .addType(StateUpdate.class)
                 .build();
 
-        ServerTestStub stub = new ServerTestStub(s);
+        ServerTestPrototype stub = new ServerTestPrototype(s);
 
         CompletableFuture<Boolean> res = new CompletableFuture<Boolean>();
         res.get();

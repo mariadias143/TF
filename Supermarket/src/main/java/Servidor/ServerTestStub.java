@@ -14,16 +14,17 @@ import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class ServerTestStub implements StubRequest<Mensagem> {
+public class ServerTestStub {
     private ServerGroupCom com;
     private int i = 0;
     private Map<Integer,StateUpdate> oldres;
 
     public ServerTestStub(Serializer s){
-        this.com = new ServerGroupCom(s,this);
+        //this.com = new ServerGroupCom(s,this);
         this.oldres = new HashMap<>();
     }
 
+    /**
     @Override
     public void handleResponse(Mensagem o) {
     }
@@ -81,5 +82,5 @@ public class ServerTestStub implements StubRequest<Mensagem> {
         mensagem.setClockStub(i);
         i++;
         this.com.multicast(mensagem,mstate);
-    }
+    }*/
 }

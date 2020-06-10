@@ -1,9 +1,10 @@
 package Cliente;
 import Communication.ClientNetwork.ClientCom;
+import Servidor.Pair;
 import Servidor.Produto;
 import Communication.*;
 import io.atomix.utils.serializer.Serializer;
-import javafx.util.Pair;
+
 
 import java.util.concurrent.CompletableFuture;
 
@@ -18,14 +19,14 @@ public class ClienteStub implements StubResponse<Mensagem> {
         this.com = new ClientCom(s,this);
     }
 
-    public boolean iniciar(){
-        boolean iniciar = false;
+    public int iniciar(){
+        int iniciar = -1;
         this.n_pedido++;
         Mensagem<Integer> m = new Mensagem<>("","Iniciar",0);
         try{
-            this.result = new CompletableFuture<Boolean>();
+            this.result = new CompletableFuture<Integer>();
             com.sendMessage(m);
-            return (Boolean) result.get();
+            return (Integer) result.get();
         }
         catch (Exception e){
             e.printStackTrace();
@@ -48,11 +49,11 @@ public class ClienteStub implements StubResponse<Mensagem> {
         return p;
     }
 
-    public boolean adicionarProduto(int id, int quantidade){
+    public boolean adicionarProduto(int idEnc,int idProd, int quantidade){
         boolean resposta = false;
         this.n_pedido++;
-        Pair p = new Pair <Integer,Integer> (id,quantidade);
-        Mensagem<Pair<Integer,Integer>> m = new Mensagem<>("","Adicionar",p);
+        Triple p = new Triple(idEnc,idProd,quantidade);
+        Mensagem<Triple> m = new Mensagem<>("","Adicionar",p);
         try{
             this.result = new CompletableFuture<Boolean>();
             com.sendMessage(m);
@@ -80,6 +81,7 @@ public class ClienteStub implements StubResponse<Mensagem> {
     }
 
     public void handleResponse(Mensagem response){
+        System.out.println("Recebi");
         switch (response.type){
             case "IniciarResp":
                 handleIniciar(response);
@@ -97,7 +99,7 @@ public class ClienteStub implements StubResponse<Mensagem> {
     }
 
     private void handleIniciar(Mensagem response){
-        Mensagem<Boolean> r = (Mensagem<Boolean>) response;
+        Mensagem<Integer> r = (Mensagem<Integer>) response;
         if(response.idClient == ""){
             result.complete(response.info);
         }

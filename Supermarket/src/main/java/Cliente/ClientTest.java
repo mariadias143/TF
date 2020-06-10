@@ -15,12 +15,12 @@ public class ClientTest {
                 .addType(StateUpdate.class)
                 .build();
 
-        ClientTestStub stub = new ClientTestStub(s);
+        ClienteStub stub = new ClienteStub(s);
         Scanner sca = new Scanner(System.in);
         while (true) {
             System.out.println("Opção:");
             String line = sca.nextLine();
-            stub.inc();
+            //stub.inc();
         }
     }
 }

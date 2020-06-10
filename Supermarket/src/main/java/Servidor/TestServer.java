@@ -19,6 +19,7 @@ public class TestServer {
                 .addType(Pair.class)
                 .addType(StateUpdate.class)
                 .build();
+
         ServerTestStub stub = new ServerTestStub(s);
 
         CompletableFuture<Boolean> res = new CompletableFuture<Boolean>();

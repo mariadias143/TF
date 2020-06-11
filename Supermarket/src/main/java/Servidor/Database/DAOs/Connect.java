@@ -6,7 +6,7 @@ import java.sql.SQLException;
 
 public class Connect {
 
-    public static Connection connect () throws Exception {
+    public static Connection connect (String name) throws Exception {
         Connection connect = null;
         try {
             Class.forName("org.hsqldb.jdbc.JDBCDriver");
@@ -15,7 +15,7 @@ public class Connect {
         }
 
         try {
-            String connectString = "jdbc:hsqldb:file:db-data/catalog";
+            String connectString = "jdbc:hsqldb:file:db-data/catalog"+name;
             connect = DriverManager.getConnection(connectString, "SA", "");
             } catch (SQLException e){
                 throw e;

@@ -22,10 +22,14 @@ public class Catalogo {
     private EncomendaDAO orders;
     private StateUpdateDAO updates;
 
+    public Catalogo(String name){
+        this.connectString += name;
+    }
+
     private void connectDB()throws Exception {
-        products = new ProdutoDAO();
-        orders  = new EncomendaDAO();
-        updates = new StateUpdateDAO();
+        products = new ProdutoDAO(this.connectString);
+        orders  = new EncomendaDAO(this.connectString);
+        updates = new StateUpdateDAO(this.connectString);
 
 
         String criarCatalogo = readToString("sql/catalogo.sql");
@@ -40,23 +44,42 @@ public class Catalogo {
         try {
             con = DriverManager.getConnection(connectString, "SA", "");
 
-            con.createStatement().executeUpdate(criarCatalogo);
-            con.createStatement().executeUpdate(povoarCatalogo);
+            String[] tableList = {"ENCOMENDA", "ENCOMENDA_PRODUTOS","PRODUTO","STATEUPDATE","STATE_REMPROD"};
+            String[] types = {"TABLE"};
+            int n = 0;
+            ResultSet tables = con.getMetaData().getTables(null, null, "%", types);
+            while (tables.next()) {
+                for(String t: tableList)
+                    if(tables.getString("TABLE_NAME").equals(t))
+                        n++;
+            }
 
+            if (n != tableList.length){
+                con.createStatement().executeUpdate(criarCatalogo);
+                con.createStatement().executeUpdate(povoarCatalogo);
+                con.commit();
+            }
+/*
             Produto pp = new Produto(15,"seita",5,20);
-            Encomenda ee = new Encomenda(1,"1",0);
+            Encomenda ee = new Encomenda(9,"1",0);
             //ee.addProd(1,4);
             // products.remove(17);
             products.put(1,pp);
             products.updateStock(3,43);
 
-            orders.put(1,ee);
+            orders.put(9,ee);
             orders.addProduct(1,new Pair(1,4));
+            orders.addProduct(1,new Pair(1,5));
+
 
             StateUpdate su = new StateUpdate();
             updates.put(1,su);
 
             System.out.println(updates.get(1));
+            System.out.println(orders.get(1));
+            System.out.println(orders.lastId());
+*/
+
 
             //con.createStatement().executeUpdate("drop  table catalogo");
         } catch (SQLException e) {
@@ -72,24 +95,11 @@ public class Catalogo {
         return string;
     }
 
-    private void adicionarProduto(Produto p){
-        try{
-            String sql = "insert into catalogo (nome, preco, stock) values (?, ?, ?)";
-            PreparedStatement pst = con.prepareStatement(sql);
-            pst.setString(1, p.getNome());
-            pst.setFloat(2, p.getPreco());
-            pst.setInt(3, p.getStock());
-            int res = pst.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
 
 
 
     public static void main(String[] args) throws Exception {
-        Catalogo db = new Catalogo();
+        Catalogo db = new Catalogo("");
         db.connectDB();
         sleep(1000);
     }

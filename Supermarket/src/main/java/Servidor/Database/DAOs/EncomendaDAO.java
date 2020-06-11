@@ -16,6 +16,11 @@ import java.util.Set;
 public class EncomendaDAO implements Map<Integer, Encomenda> {
 
     private Connection con;
+    private String connectString = "";
+
+    public EncomendaDAO(String n){
+        this.connectString = n;
+    }
 
     @Override
     public int size() {
@@ -31,7 +36,7 @@ public class EncomendaDAO implements Map<Integer, Encomenda> {
     public boolean containsKey(Object key) {
         boolean flag = false;
         try {
-            con = Connect.connect();
+            con = Connect.connect(this.connectString);
             String sql = "Select  * FROM Encomenda  WHERE id = ?";
             PreparedStatement pst = con.prepareStatement(sql);
             pst.setInt(1, (int) key);
@@ -63,7 +68,7 @@ public class EncomendaDAO implements Map<Integer, Encomenda> {
         Map<Integer, Pair> products = new HashMap<>();
 
         try {
-            con = Connect.connect();
+            con = Connect.connect(this.connectString);
             String sql = "SELECT * FROM Encomenda WHERE id= ?";
             PreparedStatement pst = con.prepareStatement(sql);
             pst.setInt(1, (int) key);
@@ -97,7 +102,7 @@ public class EncomendaDAO implements Map<Integer, Encomenda> {
     @Override
     public Encomenda put(Integer key, Encomenda value) {
         try {
-            con = Connect.connect();
+            con = Connect.connect(this.connectString);
             String sql = "insert into Encomenda (id, idUser, timeout) values (?, ?, ?)";
             PreparedStatement pst = con.prepareStatement(sql);
             pst.setInt(1, value.getIdEnc());
@@ -133,7 +138,7 @@ public class EncomendaDAO implements Map<Integer, Encomenda> {
     @Override
     public Encomenda remove(Object key) {
         try {
-            con = Connect.connect();
+            con = Connect.connect(this.connectString);
             String sql = "DELETE FROM Encomenda  WHERE id = ?";
             PreparedStatement pst = con.prepareStatement(sql);
             pst.setInt(1, (int) key);
@@ -179,7 +184,7 @@ public class EncomendaDAO implements Map<Integer, Encomenda> {
 
     public void addProduct(int idEnc, Pair p) {
         try {
-            con = Connect.connect();
+            con = Connect.connect(this.connectString);
 
             String sql = "Select * from Encomenda_Produtos where idEnc = ? and idProd = ?";
             PreparedStatement pst = con.prepareStatement(sql);
@@ -219,7 +224,7 @@ public class EncomendaDAO implements Map<Integer, Encomenda> {
     public int lastId() {
         int id = -1;
         try {
-            con = Connect.connect();
+            con = Connect.connect(this.connectString);
             String sql = "SELECT * FROM Encomenda ORDER BY ID DESC LIMIT 1";
             PreparedStatement pst = con.prepareStatement(sql);
             ResultSet rs = pst.executeQuery();

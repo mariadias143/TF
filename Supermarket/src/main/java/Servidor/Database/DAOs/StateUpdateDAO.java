@@ -12,6 +12,12 @@ import java.util.*;
 public class StateUpdateDAO implements Map<Integer, StateUpdate> {
 
     private Connection con;
+    private String connectString = "";
+
+    public StateUpdateDAO(String n){
+        this.connectString = n;
+    }
+
     @Override
     public int size() {
         return 0;
@@ -38,7 +44,7 @@ public class StateUpdateDAO implements Map<Integer, StateUpdate> {
         List<Pair> productsREM = new ArrayList<>();
 
         try {
-            con =Connect.connect();
+            con =Connect.connect(this.connectString);
             String sql = "SELECT * FROM StateUpdate WHERE timestam = ?";
             PreparedStatement pst = con.prepareStatement(sql);
             pst.setInt(1, (int) key);
@@ -75,7 +81,7 @@ public class StateUpdateDAO implements Map<Integer, StateUpdate> {
     @Override
     public StateUpdate put(Integer key, StateUpdate value) {
         try{
-            con = Connect.connect();
+            con = Connect.connect(this.connectString);
             String sql = "insert into StateUpdate (timestam, type, userId,idEnc,idProdAdd,qntProdAdd) values (?, ?, ?,?,?,?)";
             PreparedStatement pst = con.prepareStatement(sql);
             pst.setInt(1, (int)key);
@@ -148,7 +154,7 @@ public class StateUpdateDAO implements Map<Integer, StateUpdate> {
     public int lastTimesatmp() {
         int timestamp = -1;
         try {
-            con = Connect.connect();
+            con = Connect.connect(this.connectString);
             String sql = "SELECT * FROM StateUpdate ORDER BY timestam DESC LIMIT 1";
             PreparedStatement pst = con.prepareStatement(sql);
             ResultSet rs = pst.executeQuery();

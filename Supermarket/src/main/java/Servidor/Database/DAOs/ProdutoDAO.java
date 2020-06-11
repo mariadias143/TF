@@ -12,8 +12,12 @@ import java.util.*;
 
 public class ProdutoDAO implements Map<Integer,Produto> {
 
-
     private Connection con;
+    private String connectString = "";
+
+    public ProdutoDAO(String n){
+        this.connectString = n;
+    }
 
     @Override
     public int size() {
@@ -40,7 +44,7 @@ public class ProdutoDAO implements Map<Integer,Produto> {
         Produto p = new Produto();
 
         try {
-            con =Connect.connect();
+            con =Connect.connect(this.connectString);
             String sql = "SELECT * FROM Produto WHERE id= ?";
             PreparedStatement pst = con.prepareStatement(sql);
             pst.setInt(1, (int) key);
@@ -72,7 +76,7 @@ public class ProdutoDAO implements Map<Integer,Produto> {
     @Override
     public Produto put(Integer key, Produto value) {
         try{
-            con = Connect.connect();
+            con = Connect.connect(this.connectString);
             String sql = "insert into Produto (nome, preco, stock) values (?, ?, ?)";
             PreparedStatement pst = con.prepareStatement(sql);
             pst.setString(1, value.getNome());
@@ -95,7 +99,7 @@ public class ProdutoDAO implements Map<Integer,Produto> {
     @Override
     public Produto remove(Object key) {
         try{
-            con = Connect.connect();
+            con = Connect.connect(this.connectString);
             String sql = "DELETE FROM Produto  WHERE id = ?";
             PreparedStatement pst = con.prepareStatement(sql);
             pst.setInt(1, (int) key);
@@ -145,7 +149,7 @@ public class ProdutoDAO implements Map<Integer,Produto> {
 
         if( st >= 0) {
             try {
-                con = Connect.connect();
+                con = Connect.connect(this.connectString);
                 String sql = "UPDATE Produto set stock = ? WHERE id = ?";
                 PreparedStatement pst = con.prepareStatement(sql);
                 pst.setInt(1, st);

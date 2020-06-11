@@ -1,11 +1,9 @@
 package Communication;
 
-import Servidor.Pair;
+import Servidor.Database.Pair;
 
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 /**
 public class StateUpdate {
@@ -87,6 +85,16 @@ public class StateUpdate{
         this.remProd = new ArrayList<>();
     }
 
+    public StateUpdate(){
+        this.timestamp = timestamp;
+        this.userId = "";
+        this.type = 0;
+        this.idEnc = idEnc;
+        this.idProdAdd = 0;
+        this.qntProdAdd = 0;
+        this.remProd = new ArrayList<>();
+    }
+
     public static StateUpdate finishEncServer(int timestamp,int idEnc){
         StateUpdate st = new StateUpdate(timestamp,idEnc);
         st.type = 4;
@@ -127,5 +135,33 @@ public class StateUpdate{
 
     public String getUserId() {
         return userId;
+    }
+
+    public void setTimestamp(int timestamp) {
+        this.timestamp = timestamp;
+    }
+
+    public void setType(int type) {
+        this.type = type;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public void setIdEnc(int idEnc) {
+        this.idEnc = idEnc;
+    }
+
+    public void setIdProdAdd(int idProdAdd) {
+        this.idProdAdd = idProdAdd;
+    }
+
+    public void setQntProdAdd(int qntProdAdd) {
+        this.qntProdAdd = qntProdAdd;
+    }
+
+    public void setRemProd(List<Pair> remProd) {
+        this.remProd = remProd;
     }
 }

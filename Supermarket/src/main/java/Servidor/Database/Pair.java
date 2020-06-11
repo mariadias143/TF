@@ -1,4 +1,4 @@
-package Servidor;
+package Servidor.Database;
 
 public class Pair {
     public int idProd;

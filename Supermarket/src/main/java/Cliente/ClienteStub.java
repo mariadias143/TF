@@ -1,7 +1,6 @@
 package Cliente;
 import Communication.ClientNetwork.ClientCom;
-import Servidor.Pair;
-import Servidor.Produto;
+import Servidor.Database.Produto;
 import Communication.*;
 import io.atomix.utils.serializer.Serializer;
 

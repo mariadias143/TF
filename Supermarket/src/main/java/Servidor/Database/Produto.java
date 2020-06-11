@@ -1,4 +1,4 @@
-package Servidor;
+package Servidor.Database;
 
 public class Produto {
     private int id;
@@ -12,6 +12,13 @@ public class Produto {
         this.preco = preco;
         this.stock = quant;
     }
+    public Produto(){
+        this.id = 0;
+        this.nome = "";
+        this.preco = 0;
+        this.stock=0;
+    }
+
 
     public int getId(){
         return this.id;
@@ -37,7 +44,7 @@ public class Produto {
         this.nome = n;
     }
 
-    public void setId(float p){
+    public void setPreco(float p){
         this.preco = p;
     }
 
@@ -46,10 +53,12 @@ public class Produto {
     }
 
     public String toString(){
-        return "Servidor.Produto [id:"+this.id+" nome:"+this.nome+" preco:"+this.preco+" stock:"+this.stock+"]";
+        return "Servidor.Database.Produto [id:"+this.id+" nome:"+this.nome+" preco:"+this.preco+" stock:"+this.stock+"]";
     }
 
     public void updateStock(int qnt){
         this.stock += qnt;
     }
+
+
 }

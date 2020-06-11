@@ -1,19 +1,32 @@
-package Servidor;
+package Servidor.Database;
 
 import java.sql.*;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import Communication.StateUpdate;
+import Servidor.Database.DAOs.EncomendaDAO;
+import Servidor.Database.DAOs.ProdutoDAO;
+
+import Servidor.Database.DAOs.StateUpdateDAO;
 import org.apache.commons.io.FileUtils;
+
+import static java.lang.Thread.sleep;
 
 public class Catalogo {
     private Connection con;
     // jdbc protocol - hsqldb type - file type - path to resource
     private String connectString = "jdbc:hsqldb:file:db-data/catalog";
-
+    private ProdutoDAO products;
+    private EncomendaDAO orders;
+    private StateUpdateDAO updates;
 
     private void connectDB()throws Exception {
+        products = new ProdutoDAO();
+        orders  = new EncomendaDAO();
+        updates = new StateUpdateDAO();
+
 
         String criarCatalogo = readToString("sql/catalogo.sql");
         String povoarCatalogo = readToString("sql/povoar-catalogo.sql");
@@ -30,25 +43,22 @@ public class Catalogo {
             con.createStatement().executeUpdate(criarCatalogo);
             con.createStatement().executeUpdate(povoarCatalogo);
 
-            PreparedStatement pst = con.prepareStatement("select * from catalogo");
-            pst.clearParameters();
-            ResultSet rs = pst.executeQuery();
+            Produto pp = new Produto(15,"seita",5,20);
+            Encomenda ee = new Encomenda(1,"1",0);
+            //ee.addProd(1,4);
+            // products.remove(17);
+            products.put(1,pp);
+            products.updateStock(3,43);
 
-            List<Produto> catalogo = new ArrayList<Produto>();
-            while(rs.next()){
-                catalogo.add(new Produto(
-                                rs.getInt(1),
-                                rs.getString(2),
-                                rs.getFloat(3),
-                                rs.getInt(4)
-                        )
-                );
-            }
+            orders.put(1,ee);
+            orders.addProduct(1,new Pair(1,4));
 
-            for(Produto p : catalogo) {
-                System.out.println(p);
-            }
+            StateUpdate su = new StateUpdate();
+            updates.put(1,su);
 
+            System.out.println(updates.get(1));
+
+            //con.createStatement().executeUpdate("drop  table catalogo");
         } catch (SQLException e) {
             throw e;
         } finally {
@@ -75,8 +85,12 @@ public class Catalogo {
         }
     }
 
+
+
+
     public static void main(String[] args) throws Exception {
         Catalogo db = new Catalogo();
         db.connectDB();
+        sleep(1000);
     }
 }

@@ -6,8 +6,8 @@ import java.util.Scanner;
 
 import Communication.Mensagem;
 import Communication.StateUpdate;
-import Servidor.Pair;
-import Servidor.Produto;
+import Servidor.Database.Pair;
+import Servidor.Database.Produto;
 import io.atomix.utils.serializer.Serializer;
 import io.atomix.utils.serializer.SerializerBuilder;
 

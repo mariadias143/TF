@@ -5,6 +5,9 @@ import Communication.AggrementMiddleware.ServerGroupCom;
 import Communication.Mensagem;
 import Communication.StateUpdate;
 import Communication.StubRequest;
+import Servidor.Database.Encomenda;
+import Servidor.Database.Pair;
+import Servidor.Database.Produto;
 import io.atomix.utils.serializer.Serializer;
 import spread.SpreadGroup;
 
@@ -49,7 +52,7 @@ public class ServerTestPrototype implements StubRequest<Mensagem>  {
         for(StateUpdate update : o){
             switch (update.getType()){
                 case 0://criar enc
-                    orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId()));
+                    orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),0));
                     break;
                 case 1://add prod
                     Encomenda e = orders.get(update.getIdEnc());
@@ -83,7 +86,7 @@ public class ServerTestPrototype implements StubRequest<Mensagem>  {
         switch (update.getType()){
             case 0://criar enc
                 order_id = Math.max(update.getIdEnc()+1,order_id);
-                orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId()));
+                orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),0));
                 break;
             case 1://add prod
                 Encomenda e = orders.get(update.getIdEnc());

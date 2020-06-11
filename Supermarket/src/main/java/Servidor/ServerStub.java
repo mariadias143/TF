@@ -1,6 +1,7 @@
 package Servidor;
 
 import Communication.AggrementMiddleware.ServerGroupCom;
+import Servidor.Database.Catalogo;
 import io.atomix.utils.serializer.Serializer;
 import Communication.*;
 

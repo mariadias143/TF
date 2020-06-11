@@ -44,19 +44,25 @@ public class Catalogo {
             con.createStatement().executeUpdate(povoarCatalogo);
 
             Produto pp = new Produto(15,"seita",5,20);
-            Encomenda ee = new Encomenda(1,"1",0);
+            Encomenda ee = new Encomenda(9,"1",0);
             //ee.addProd(1,4);
             // products.remove(17);
             products.put(1,pp);
             products.updateStock(3,43);
 
-            orders.put(1,ee);
+            orders.put(9,ee);
             orders.addProduct(1,new Pair(1,4));
+            orders.addProduct(1,new Pair(1,5));
+
 
             StateUpdate su = new StateUpdate();
             updates.put(1,su);
 
             System.out.println(updates.get(1));
+            System.out.println(orders.get(1));
+            System.out.println(orders.lastId());
+
+
 
             //con.createStatement().executeUpdate("drop  table catalogo");
         } catch (SQLException e) {
@@ -70,19 +76,6 @@ public class Catalogo {
         File file = new File(filename);
         String string = FileUtils.readFileToString(file, "utf-8");
         return string;
-    }
-
-    private void adicionarProduto(Produto p){
-        try{
-            String sql = "insert into catalogo (nome, preco, stock) values (?, ?, ?)";
-            PreparedStatement pst = con.prepareStatement(sql);
-            pst.setString(1, p.getNome());
-            pst.setFloat(2, p.getPreco());
-            pst.setInt(3, p.getStock());
-            int res = pst.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
     }
 
 

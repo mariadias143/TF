@@ -16,6 +16,7 @@ import java.util.Set;
 public class EncomendaDAO implements Map<Integer, Encomenda> {
 
     private Connection con;
+
     @Override
     public int size() {
         return 0;
@@ -28,19 +29,19 @@ public class EncomendaDAO implements Map<Integer, Encomenda> {
 
     @Override
     public boolean containsKey(Object key) {
-        boolean flag =false;
-        try{
+        boolean flag = false;
+        try {
             con = Connect.connect();
             String sql = "Select  * FROM Encomenda  WHERE id = ?";
             PreparedStatement pst = con.prepareStatement(sql);
             pst.setInt(1, (int) key);
             ResultSet rs = pst.executeQuery();
-            if(rs.next()) {
-                flag=true;
+            if (rs.next()) {
+                flag = true;
             }
         } catch (Exception e) {
             e.printStackTrace();
-        }finally {
+        } finally {
             try {
                 con.close();
             } catch (SQLException throwables) {
@@ -59,33 +60,32 @@ public class EncomendaDAO implements Map<Integer, Encomenda> {
     @Override
     public Encomenda get(Object key) {
         Encomenda e = new Encomenda();
-        Map<Integer,Pair> products = new HashMap<>();
+        Map<Integer, Pair> products = new HashMap<>();
 
         try {
-            con =Connect.connect();
+            con = Connect.connect();
             String sql = "SELECT * FROM Encomenda WHERE id= ?";
             PreparedStatement pst = con.prepareStatement(sql);
             pst.setInt(1, (int) key);
             ResultSet rs = pst.executeQuery();
-            if(rs.next()){
+            if (rs.next()) {
                 e.setIdEnc(rs.getInt(1));
                 e.setIdUser(rs.getString(2));
                 e.setTimeout(rs.getFloat(3));
 
                 sql = "SELECT * FROM Encomenda_Produtos where idEnc = ?";
-                pst=con.prepareStatement(sql);
+                pst = con.prepareStatement(sql);
                 pst.setInt(1, (int) key);
                 ResultSet rss = pst.executeQuery();
                 while (rss.next()) {
                     products.put((int) key,
-                            new Pair (rss.getInt(2),
-                                      rss.getInt(3)
+                            new Pair(rss.getInt(2),
+                                    rss.getInt(3)
                             ));
                 }
                 e.setProds(products);
-            }
-            else {
-                e=null;
+            } else {
+                e = null;
             }
         } catch (Exception x) {
             x.printStackTrace();
@@ -96,7 +96,7 @@ public class EncomendaDAO implements Map<Integer, Encomenda> {
 
     @Override
     public Encomenda put(Integer key, Encomenda value) {
-        try{
+        try {
             con = Connect.connect();
             String sql = "insert into Encomenda (id, idUser, timeout) values (?, ?, ?)";
             PreparedStatement pst = con.prepareStatement(sql);
@@ -105,19 +105,19 @@ public class EncomendaDAO implements Map<Integer, Encomenda> {
             pst.setFloat(3, value.getTimeout());
             int res = pst.executeUpdate();
 
-            for(Pair p : value.getProds().values()) {
+            for (Pair p : value.getProds().values()) {
 
                 sql = "insert into  Encomenda_Produtos (idEnc,idProd,quantidade) values (?,?,?)";
-                pst=con.prepareStatement(sql);
-                pst.setInt(1,key);
-                pst.setInt(2,p.idProd);
-                pst.setInt(3,p.qntProd);
+                pst = con.prepareStatement(sql);
+                pst.setInt(1, key);
+                pst.setInt(2, p.idProd);
+                pst.setInt(3, p.qntProd);
                 res = pst.executeUpdate();
             }
 
         } catch (Exception e) {
             e.printStackTrace();
-        }finally {
+        } finally {
             try {
                 con.close();
                 return value;
@@ -127,12 +127,12 @@ public class EncomendaDAO implements Map<Integer, Encomenda> {
         }
 
 
-
         return value;
     }
+
     @Override
     public Encomenda remove(Object key) {
-        try{
+        try {
             con = Connect.connect();
             String sql = "DELETE FROM Encomenda  WHERE id = ?";
             PreparedStatement pst = con.prepareStatement(sql);
@@ -140,7 +140,7 @@ public class EncomendaDAO implements Map<Integer, Encomenda> {
             int res = pst.executeUpdate();
         } catch (Exception e) {
             e.printStackTrace();
-        }finally {
+        } finally {
             try {
                 con.close();
             } catch (SQLException throwables) {
@@ -149,7 +149,6 @@ public class EncomendaDAO implements Map<Integer, Encomenda> {
         }
         return null;
     }
-
 
 
     @Override
@@ -178,18 +177,36 @@ public class EncomendaDAO implements Map<Integer, Encomenda> {
     }
 
 
-    public void addProduct (int idEnc,Pair p) {
-        try{
+    public void addProduct(int idEnc, Pair p) {
+        try {
             con = Connect.connect();
-            String sql = "insert into  Encomenda_Produtos (idEnc,idProd,quantidade) values (?,?,?)";
+
+            String sql = "Select * from Encomenda_Produtos where idEnc = ? and idProd = ?";
             PreparedStatement pst = con.prepareStatement(sql);
-            pst.setInt(1,idEnc);
-            pst.setInt(2,p.idProd);
-            pst.setInt(3,p.qntProd);
-            int res = pst.executeUpdate();
+            pst.setInt(1, idEnc);
+            pst.setInt(2, p.idProd);
+            ResultSet rs = pst.executeQuery();
+            if (rs.next()) {
+                int quantidade = rs.getInt(3);
+                quantidade += p.qntProd;
+
+                sql = "UPDATE Encomenda_Produtos set quantidade = ? where idEnc = ? and idProd = ?";
+                pst = con.prepareStatement(sql);
+                pst.setInt(1, quantidade);
+                pst.setInt(2, idEnc);
+                pst.setInt(3, p.idProd);
+                int rss = pst.executeUpdate();
+            } else {
+                sql = "insert into  Encomenda_Produtos (idEnc,idProd,quantidade) values (?,?,?)";
+                pst = con.prepareStatement(sql);
+                pst.setInt(1, idEnc);
+                pst.setInt(2, p.idProd);
+                pst.setInt(3, p.qntProd);
+                int res = pst.executeUpdate();
+            }
         } catch (Exception e) {
             e.printStackTrace();
-        }finally {
+        } finally {
             try {
                 con.close();
             } catch (SQLException throwables) {
@@ -198,5 +215,29 @@ public class EncomendaDAO implements Map<Integer, Encomenda> {
         }
     }
 
+
+    public int lastId() {
+        int id = -1;
+        try {
+            con = Connect.connect();
+            String sql = "SELECT * FROM Encomenda ORDER BY ID DESC LIMIT 1";
+            PreparedStatement pst = con.prepareStatement(sql);
+            ResultSet rs = pst.executeQuery();
+            if (rs.next()) {
+                id = (rs.getInt(1));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                con.close();
+                return id;
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
+            }
+        }
+        return id;
+
+    }
 }
 

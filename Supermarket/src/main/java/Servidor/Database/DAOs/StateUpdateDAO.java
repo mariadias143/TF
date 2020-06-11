@@ -141,4 +141,31 @@ public class StateUpdateDAO implements Map<Integer, StateUpdate> {
     public Set<Entry<Integer, StateUpdate>> entrySet() {
         return null;
     }
+
+
+
+
+    public int lastTimesatmp() {
+        int timestamp = -1;
+        try {
+            con = Connect.connect();
+            String sql = "SELECT * FROM StateUpdate ORDER BY timestam DESC LIMIT 1";
+            PreparedStatement pst = con.prepareStatement(sql);
+            ResultSet rs = pst.executeQuery();
+            if (rs.next()) {
+                timestamp = (rs.getInt(1));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                con.close();
+                return timestamp;
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
+            }
+        }
+        return timestamp;
+
+    }
 }

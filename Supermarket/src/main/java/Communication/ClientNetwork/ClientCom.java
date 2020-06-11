@@ -65,6 +65,7 @@ public class ClientCom {
 
         try{
             connection.multicast(message);
+            System.out.println("Enviei");
         }
         catch (SpreadException e){
             e.printStackTrace();

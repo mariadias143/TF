@@ -24,7 +24,7 @@ public class TestServer {
                 .addType(StateUpdate.class)
                 .build();
 
-        ServerTestPrototype stub = new ServerTestPrototype(s);
+        ServerTestPrototypeDAO stub = new ServerTestPrototypeDAO(s);
 
         CompletableFuture<Boolean> res = new CompletableFuture<Boolean>();
         res.get();

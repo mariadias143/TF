@@ -31,8 +31,28 @@ public class ProdutoDAO implements Map<Integer,Produto> {
 
     @Override
     public boolean containsKey(Object key) {
-        return false;
+        boolean flag = false;
+        try {
+            con = Connect.connect(this.connectString);
+            String sql = "Select  * FROM Produto  WHERE id = ?";
+            PreparedStatement pst = con.prepareStatement(sql);
+            pst.setInt(1, (int) key);
+            ResultSet rs = pst.executeQuery();
+            if (rs.next()) {
+                flag = true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                con.close();
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
+            }
+        }
+        return flag;
     }
+
 
     @Override
     public boolean containsValue(Object value) {

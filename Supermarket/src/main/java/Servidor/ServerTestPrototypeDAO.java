@@ -18,28 +18,43 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 
 public class ServerTestPrototypeDAO implements StubRequest<Mensagem>  {
     private ServerGroupCom com;
     private int timestamp = 0;
     private ProdutoDAO inventory;
-    private Map<Integer, StateUpdate> transactions;
+    private StateUpdateDAO transactions;
     private EncomendaDAO orders;
     private int order_id = 0;
+    private ExecutorService pool;
+    private int ola;
 
-    public ServerTestPrototypeDAO(Serializer s){
+    public ServerTestPrototypeDAO(Serializer s,String name){
+        this.inventory = new ProdutoDAO(name);
+        this.transactions = new StateUpdateDAO(name);
+        this.orders = new EncomendaDAO(name);
+        int lastStamp = transactions.lastTimestamp();
+        int lastOrder = orders.lastId();
+
+        this.timestamp = lastStamp == -1 ? 0 : lastStamp + 1;
+        this.order_id = lastOrder == -1 ? 0 : lastOrder + 1;
+
+        this.pool = Executors.newFixedThreadPool(5);
         this.com = new ServerGroupCom(s,this);
-        this.inventory = new ProdutoDAO();
-        this.transactions = new StateUpdateDAO();
-        this.orders = new EncomendaDAO();
+        ola = 0;
     }
 
     @Override
     public synchronized void askState() {
-        System.out.println("Preciso do estado atualizado");
+        System.out.println("Preciso do estado atualizado: ");
         Mensagem<StateUpdate> rstate = new Mensagem<>("","ASKSTATE",null);
-        this.com.state_request(rstate,this.timestamp);
+        rstate.setClockStub(timestamp);
+        this.com.state_request(rstate);
     }
 
     @Override
@@ -88,13 +103,11 @@ public class ServerTestPrototypeDAO implements StubRequest<Mensagem>  {
                 orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),0));
                 break;
             case 1://add prod
-                Encomenda e = orders.get(update.getIdEnc());
-                e.addProd(update.getIdProdAdd(),update.getQntProdAdd());
+                orders.addProduct(update.getIdEnc(),new Pair(update.getIdProdAdd(),update.getQntProdAdd()));
                 break;
             case 2://sucesso da enc
                 for(Pair p : update.getRemProd()){
-                    Produto aux = this.inventory.get(p.idProd);
-                    aux.updateStock(-p.qntProd);
+                    this.inventory.updateStock(p.idProd,-p.qntProd);
                 }
                 this.orders.remove(update.getIdEnc());
                 break;
@@ -120,37 +133,45 @@ public class ServerTestPrototypeDAO implements StubRequest<Mensagem>  {
 
     @Override
     public void handleRequest(Mensagem o) {
-        switch (o.type){
-            case "Iniciar":
-                iniciarEnc(o);
-                System.out.println("Recebi Iniciar");
-                break;
-            case "Consultar":
-                consultaProd(o);
-                System.out.println("Recebi Consultar");
-                break;
-            case "Adicionar":
-                addProduto(o);
-                System.out.println("Recebi Adicionar");
-                break;
-            case "Finalizar":
-                System.out.println("Recebi Finalizar");
-                break;
-        }
+        CompletableFuture f = CompletableFuture.runAsync(() ->  {
+            switch (o.type){
+                case "Iniciar":
+                    iniciarEnc(o);
+                    System.out.println("Recebi Iniciar");
+                    break;
+                case "Consultar":
+                    consultaProd(o);
+                    System.out.println("Recebi Consultar");
+                    break;
+                case "Adicionar":
+                    addProduto(o);
+                    System.out.println("Recebi Adicionar");
+                    break;
+                case "Finalizar":
+                    System.out.println("Recebi Finalizar");
+                    break;
+            }
+        },this.pool);
     }
 
     @Override
-    public void transferState(int timestamp, SpreadGroup sender) {
+    public void transferState(final int timestamp, SpreadGroup sender) {
+        CompletableFuture f = CompletableFuture.runAsync(() ->  internalTransfer(timestamp,sender),this.pool);
+    }
+
+    private synchronized void internalTransfer(int timestamp, SpreadGroup sender){
         List<StateUpdate> lst = new ArrayList<>();
-        while (timestamp < this.timestamp){
-            StateUpdate u = transactions.get(timestamp);
+        int i = timestamp;
+        System.out.println("Timestamp copy: " + i);
+        while (i < this.timestamp){
+            StateUpdate u = transactions.get(i);
             if (u != null){
                 lst.add(u);
             }
-            timestamp++;
+            i++;
         }
         Mensagem<List<StateUpdate>> m = new Mensagem<>("","STATE",lst);
-        m.setClockStub(timestamp);
+        m.setClockStub(i);
         this.com.sendMessage(m,sender);
     }
 
@@ -196,6 +217,15 @@ public class ServerTestPrototypeDAO implements StubRequest<Mensagem>  {
             Mensagem<Boolean> resp = new Mensagem<>(m.idClient,"AdicionarResp",false);
             resp.setClientIP(m.clientIP);
             this.com.send(resp);
+        }
+    }
+
+    private synchronized void finalizarEnc(Mensagem m){
+        Mensagem<Integer> msg = m;
+        int idEnc = msg.info;
+
+        if (orders.containsKey(idEnc)){
+            CompletableFuture f = CompletableFuture.runAsync(() ->  handleRequest(m));
         }
     }
 }

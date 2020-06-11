@@ -39,7 +39,8 @@ public class ServerTestPrototype implements StubRequest<Mensagem>  {
     public synchronized void askState() {
         System.out.println("Preciso do estado atualizado");
         Mensagem<StateUpdate> rstate = new Mensagem<>("","ASKSTATE",null);
-        this.com.state_request(rstate,this.timestamp);
+        rstate.setClockStub(timestamp);
+        this.com.state_request(rstate);
     }
 
     @Override

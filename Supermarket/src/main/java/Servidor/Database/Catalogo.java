@@ -18,20 +18,12 @@ public class Catalogo {
     private Connection con;
     // jdbc protocol - hsqldb type - file type - path to resource
     private String connectString = "jdbc:hsqldb:file:db-data/catalog";
-    private ProdutoDAO products;
-    private EncomendaDAO orders;
-    private StateUpdateDAO updates;
 
     public Catalogo(String name){
         this.connectString += name;
     }
 
-    private void connectDB()throws Exception {
-        products = new ProdutoDAO(this.connectString);
-        orders  = new EncomendaDAO(this.connectString);
-        updates = new StateUpdateDAO(this.connectString);
-
-
+    public void connectDB()throws Exception {
         String criarCatalogo = readToString("sql/catalogo.sql");
         String povoarCatalogo = readToString("sql/povoar-catalogo.sql");
 

@@ -151,7 +151,7 @@ public class StateUpdateDAO implements Map<Integer, StateUpdate> {
 
 
 
-    public int lastTimesatmp() {
+    public int lastTimestamp() {
         int timestamp = -1;
         try {
             con = Connect.connect(this.connectString);

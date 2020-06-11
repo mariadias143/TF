@@ -47,9 +47,8 @@ public class ServerGroupCom {
         }
     }
 
-    public void state_request(Mensagem m,int timestamp){
+    public void state_request(Mensagem m){
         m.setPrivateSender(this.privateName);
-        m.setClock(timestamp);
         SpreadMessage message = new SpreadMessage();
         message.setSafe();
         message.addGroup("Servidores");

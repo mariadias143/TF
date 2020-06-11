@@ -64,10 +64,10 @@ public class ClienteStub implements StubResponse<Mensagem> {
         return resposta;
     }
 
-    public boolean finalizarEncomenda(){
+    public boolean finalizarEncomenda(int idEnc){
         boolean resposta = false;
         this.n_pedido++;
-        Mensagem<Integer> m = new Mensagem<>("","Finalizar",0);
+        Mensagem<Integer> m = new Mensagem<>("","Finalizar",idEnc);
         try{
             this.result = new CompletableFuture<Boolean>();
             com.sendMessage(m);

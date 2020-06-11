@@ -69,7 +69,9 @@ public class Cliente {
                     // Em vez disto imprimir encomenda atual
                     break;
                 case 4:
-                    boolean res = stub.finalizarEncomenda();
+                    System.out.println("Id da encomenda a finalizar:");
+                    line = sca.nextLine();
+                    boolean res = stub.finalizarEncomenda(Integer.parseInt(line));
                     if(res)
                         System.out.println("Encomenda confirmada");
                     else System.out.println("Erro. Um ou mais produtos não estão disponíveis.");

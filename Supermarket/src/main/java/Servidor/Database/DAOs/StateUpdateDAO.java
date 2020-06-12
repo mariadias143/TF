@@ -84,7 +84,7 @@ public class StateUpdateDAO implements Map<Integer, StateUpdate> {
     public StateUpdate put(Integer key, StateUpdate value) {
         try{
             con = Connect.connect(this.connectString);
-            String sql = "insert into StateUpdate (timestam, type, userId,idEnc,inicial,final,idProdAdd,qntProdAdd) values (?, ?,?,? ?,?,?,?)";
+            String sql = "insert into StateUpdate (timestam, type, userId,idEnc,inicial,final,idProdAdd,qntProdAdd) values (?, ?,?,?,?,?,?,?)";
             PreparedStatement pst = con.prepareStatement(sql);
             pst.setInt(1, (int)key);
             pst.setInt(2, value.getType());

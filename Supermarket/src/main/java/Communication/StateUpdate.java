@@ -54,7 +54,7 @@ public class StateUpdate{
     public StateUpdate(int timestamp,String userId,int idEnc){
         Date dNow = new Date(System.currentTimeMillis());
         Date dEnd  = new Date(System.currentTimeMillis()+ 30*10000);
-        DateFormat dateFormat = new SimpleDateFormat("yyyy-mm-dd hh:mm:ss");
+        DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         String strDNow = dateFormat.format(dNow);
         String strEnd = dateFormat.format(dEnd);
         this.timestamp = timestamp;

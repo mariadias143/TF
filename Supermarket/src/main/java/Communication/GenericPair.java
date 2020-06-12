@@ -12,4 +12,10 @@ public class GenericPair<K,T> {
         this.snd = snd;
         this.destination = destination;
     }
+
+    public GenericPair(K fst,T snd){
+        this.fst = fst;
+        this.snd = snd;
+        this.destination = null;
+    }
 }

@@ -39,6 +39,7 @@ public class ServerConcorrencyTestDAO implements StubRequest<StateUpdate>  {
     private Set<Integer> concurrency_orders;
     private Set<Integer> concurrency_products;
     private Map<Integer,GenericPair<Integer,List<Integer>>> running_transactions;
+    private int teste;
 
     public ServerConcorrencyTestDAO(Serializer s, String name){
         this.inventory = new ProdutoDAO(name);

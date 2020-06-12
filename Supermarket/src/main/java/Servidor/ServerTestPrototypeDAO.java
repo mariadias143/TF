@@ -270,6 +270,7 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
             int encId = this.order_id++;
             Mensagem<Integer> msg = new Mensagem<>(idClient,"IniciarResp",encId);
             msg.setClientIP(m.clientIP);
+            msg.setResult(0);
             StateUpdate n_status = new StateUpdate(this.timestamp,idClient,encId);
             msg.setClockStub(timestamp);
             Mensagem<StateUpdate> mstate = new Mensagem<>("","STATEU",n_status);
@@ -290,6 +291,13 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
         Produto p = this.inventory.get(m.info);
 
         Mensagem<Produto> resp = new Mensagem<>(m.idClient,"ConsultarResp",p);
+
+        // erro, produto nao existe
+        if(p==null)
+            resp.setResult(1);
+        else
+            resp.setResult(0);
+
         resp.setClientIP(m.clientIP);
         this.com.send(resp);
     }
@@ -302,23 +310,37 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
             this.transaction_ongoing = true;
 
             Mensagem<Triple> msg = m;
-            int idEnc = msg.info.fst;
-            int idProd = msg.info.snd;
-            int quantidade = msg.info.rd;
+            int idEnc = (Integer) msg.info.fst;
+            int idProd = (Integer) msg.info.snd;
+            int quantidade = (Integer) msg.info.rd;
+
+            Produto p = null;
+            p = this.inventory.get(idProd);
 
             if (orders.containsKey(idEnc)){
-                Mensagem<Boolean> resp = new Mensagem<>(m.idClient,"AdicionarResp",true);
-                resp.setClientIP(m.clientIP);
-                resp.setClockStub(timestamp);
-                StateUpdate n_status = new StateUpdate(this.timestamp,idEnc,idProd,quantidade);
-                Mensagem<StateUpdate> mstate = new Mensagem<>("","STATEU",n_status);
-                mstate.setClockStub(timestamp);
-                timestamp++;
-                this.com.multicast(resp,mstate);
+                if(p != null) {
+                    Mensagem<Boolean> resp = new Mensagem<>(m.idClient, "AdicionarResp", true);
+                    resp.setClientIP(m.clientIP);
+                    resp.setClockStub(timestamp);
+                    resp.setResult(0);
+                    StateUpdate n_status = new StateUpdate(this.timestamp, idEnc, idProd, quantidade);
+                    Mensagem<StateUpdate> mstate = new Mensagem<>("", "STATEU", n_status);
+                    mstate.setClockStub(timestamp);
+                    timestamp++;
+                    this.com.multicast(resp, mstate);
+                } else {
+                    Mensagem<Boolean> resp = new Mensagem<>(m.idClient,"AdicionarResp",false);
+                    resp.setResult(3);
+                    resp.setClientIP(m.clientIP);
+                    this.com.send(resp);
+                    this.transaction_ongoing = false;
+                    this.transactionNotify.signalAll();
+                }
             }
             else{
                 //error, não encontrou o produto
                 Mensagem<Boolean> resp = new Mensagem<>(m.idClient,"AdicionarResp",false);
+                resp.setResult(2);
                 resp.setClientIP(m.clientIP);
                 this.com.send(resp);
                 this.transaction_ongoing = false;
@@ -359,6 +381,7 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
                     Mensagem<Boolean> resp = new Mensagem<>(m.idClient,"FinalizarResp",false);
                     resp.setClientIP(m.clientIP);
                     resp.setClockStub(timestamp);
+                    resp.setResult(4);
                     StateUpdate st = StateUpdate.finishEncUserFail(this.timestamp,idEnc);
                     Mensagem<StateUpdate> mstate = new Mensagem<>("","STATEU",st);
                     mstate.setClockStub(timestamp);
@@ -369,6 +392,7 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
                     Mensagem<Boolean> resp = new Mensagem<>(m.idClient,"FinalizarResp",true);
                     resp.setClientIP(m.clientIP);
                     resp.setClockStub(timestamp);
+                    resp.setResult(0);
                     StateUpdate st = new StateUpdate(timestamp,idEnc,e.getProds().values().stream().collect(Collectors.toList()));
                     Mensagem<StateUpdate> mstate = new Mensagem<>("","STATEU",st);
                     mstate.setClockStub(timestamp);
@@ -380,6 +404,7 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
                 //não existe a encomenda
                 Mensagem<Boolean> resp = new Mensagem<>(m.idClient,"FinalizarResp",false);
                 resp.setClientIP(m.clientIP);
+                resp.setResult(2);
                 this.com.send(resp);
                 this.transaction_ongoing = false;
                 this.transactionNotify.signalAll();

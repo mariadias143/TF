@@ -50,7 +50,12 @@ public class Cliente {
                     System.out.println("Id do produto:");
                     line = sca.nextLine();
                     Produto result = stub.consultar(Integer.parseInt(line));
-                    System.out.println(result);
+                    if (result != null){
+                        System.out.println(result);
+                    }
+                    else {
+                        stub.printError();
+                    }
                     break;
                 case 3:
                     System.out.println("Id da encomenda:");
@@ -64,7 +69,7 @@ public class Cliente {
                         System.out.println("Produto adicionado");
                     }
                     else {
-                        System.out.println("Error");
+                        stub.printError();
                     }
                     // Em vez disto imprimir encomenda atual
                     break;
@@ -74,7 +79,7 @@ public class Cliente {
                     boolean res = stub.finalizarEncomenda(Integer.parseInt(line));
                     if(res)
                         System.out.println("Encomenda confirmada");
-                    else System.out.println("Erro. Um ou mais produtos não estão disponíveis.");
+                    else stub.printError();
                     break;
             }
         }

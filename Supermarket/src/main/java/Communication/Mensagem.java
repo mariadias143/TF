@@ -11,6 +11,7 @@ public class Mensagem<T>{
     public String clientIP = "";
     public int clock = 0;
     public int StubClock = 0;
+    public int result; // 1 - erro na consulta do produto; 2 - erro em adicionar produto a encomenda
     public T info;
 
     public Mensagem(String idClient, String type, T object){
@@ -36,4 +37,8 @@ public class Mensagem<T>{
     public void setClock(int clock) {this.clock = clock;}
 
     public void setClockStub(int clock) {this.StubClock = clock;}
+
+    public void setResult(int res) {this.result = res;}
+
+
 }

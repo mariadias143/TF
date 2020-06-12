@@ -88,7 +88,124 @@ public class Catalogo {
     }
 
 
+    public void printPRODUTOS(){
+        try {
+            con = DriverManager.getConnection(connectString, "SA", "");
+            Statement st = con.createStatement();
+            ResultSet rs = st.executeQuery("select * from PRODUTO");
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                String nome= rs.getString("nome");
+                float preco= rs.getFloat("preco");
+                int stock= rs.getInt("stock");
+                System.out.println("ID:"+id+", NOME:"+ nome+", PRECO:"+ preco+", STOCK:"+ stock);
+            }
+            rs.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                con.close();
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
+            }
+        }
+    }
 
+    public void printENCOMENDAS(){
+        try {
+            con = DriverManager.getConnection(connectString, "SA", "");
+            Statement st = con.createStatement();
+            ResultSet rs = st.executeQuery("select * from ENCOMENDA");
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                float timeout = rs.getFloat("timeout");
+                String idUser = rs.getString("idUser");
+                System.out.println("ID:"+id+", ID_USER:"+ idUser+", TIMEOUT:"+ timeout);
+            }
+            rs.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                con.close();
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
+            }
+        }
+    }
+
+    public void printENCOMENDA_PRODUTOS(){
+        try {
+            con = DriverManager.getConnection(connectString, "SA", "");
+            Statement st = con.createStatement();
+            ResultSet rs = st.executeQuery("select * from ENCOMENDA_PRODUTOS");
+            while (rs.next()) {
+                int idEnc = rs.getInt("idEnc");
+                int idProd = rs.getInt("idProd");
+                int quantidade = rs.getInt("quantidade");
+                System.out.println("ID:"+idEnc+", ID_PROD:"+ idProd+", QUANT:"+ quantidade);
+            }
+            rs.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                con.close();
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
+            }
+        }
+    }
+
+    public void printSTATEUPDATE(){
+        try {
+            con = DriverManager.getConnection(connectString, "SA", "");
+            Statement st = con.createStatement();
+            ResultSet rs = st.executeQuery("select * from StateUpdate");
+            while (rs.next()) {
+                int timestamp = rs.getInt("timestam");
+                int type = rs.getInt("type");
+                int idEnc = rs.getInt("idEnc");
+                int idProdAdd = rs.getInt("idProdAdd");
+                String userId = rs.getString("userId");
+                int qntProdAdd = rs.getInt("qntProdAdd");
+                System.out.println("TIMESTAMP:"+timestamp+", TYPE:"+ type+", ID_USER:"+ userId+", ID_ENC:"+ idEnc+", ID_PROD:"+ idProdAdd+", QUANT_ADD:"+ qntProdAdd);
+            }
+            rs.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                con.close();
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
+            }
+        }
+    }
+
+    public void printSTATEREMPROD(){
+        try {
+            con = DriverManager.getConnection(connectString, "SA", "");
+            Statement st = con.createStatement();
+            ResultSet rs = st.executeQuery("select * from STATE_REMPROD");
+            while (rs.next()) {
+                int timestamp = rs.getInt("timestam");
+                int idProd = rs.getInt("idProd");
+                int quantidade = rs.getInt("quantidade");
+                System.out.println("TIMESTAMP:"+timestamp + ", ID_PROD:"+ idProd + ", QUANT:" + quantidade);
+            }
+            rs.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                con.close();
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
+            }
+        }
+    }
 
     public static void main(String[] args) throws Exception {
         Catalogo db = new Catalogo("");

@@ -13,31 +13,22 @@ import Servidor.Database.Encomenda;
 import Servidor.Database.Pair;
 import Servidor.Database.Produto;
 import io.atomix.utils.serializer.Serializer;
-
 import spread.SpreadGroup;
 
-import javax.print.DocFlavor;
-import java.text.DateFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.time.temporal.ChronoUnit;
-
-import java.time.LocalTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-import static java.lang.Thread.sleep;
-import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
-
-public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
+public class ServerConcurrency implements StubRequest<StateUpdate>  {
     private ServerGroupCom com;
     private int timestamp = 0;
     private ProdutoDAO inventory;
@@ -48,8 +39,10 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
     private Lock l;
     private boolean transaction_ongoing;
     private Condition transactionNotify;
+    private Set<Integer> concurrency_orders;
+    private Set<Integer> concurrency_products;
 
-    public ServerTestPrototypeDAO(Serializer s,String name){
+    public ServerConcurrency(Serializer s, String name){
         this.inventory = new ProdutoDAO(name);
         this.transactions = new StateUpdateDAO(name);
         this.orders = new EncomendaDAO(name);
@@ -58,6 +51,8 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
         this.l = new ReentrantLock();
         this.transactionNotify = this.l.newCondition();
         this.transaction_ongoing = false;
+        concurrency_orders = new HashSet<>();
+        concurrency_products = new HashSet<>();
 
         this.timestamp = lastStamp == -1 ? 0 : lastStamp + 1;
         this.order_id = lastOrder == -1 ? 0 : lastOrder + 1;
@@ -83,7 +78,7 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
     }
 
     @Override
-    public void setStates(List<StateUpdate> oldEvents,List<GenericPair<StateUpdate,Mensagem>> queuedEvents){
+    public void setStates(List<StateUpdate> oldEvents,List<GenericPair<StateUpdate,Mensagem>> queuedEvents) {
         CompletableFuture f = CompletableFuture.runAsync(() -> {
             int max_timestamp = oldEvents.stream().mapToInt(a -> a.getTimestamp()).max().orElse(0);
             if(max_timestamp != 0){
@@ -94,19 +89,7 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
                 switch (update.getType()){
                     case 0://criar enc
                         this.order_id = Math.max(this.order_id,update.getIdEnc() + 1);
-                        String end = (update.getEnd());
-                        try {
-                            long msfalta = subtime(end,new Date());
-                            String novofim = addTime(new Date(),msfalta);
-                            update.setEnd(novofim);
-
-                        // FIM-ATUAL = TEMPO QUE FALTA
-                        // Momento + Tempo que falta = FIM
-                        // ALTERAR NO STATE UPDATE AS VARIAVEIS DE TEMPO NO sTATE UPDATDE
-                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),novofim));
-                        } catch (ParseException e) {
-                            e.printStackTrace();
-                        }
+                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),0));
                         break;
                     case 1://add prod
                         orders.addProduct(update.getIdEnc(),new Pair(update.getIdProdAdd(),update.getQntProdAdd()));
@@ -136,16 +119,7 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
                 switch (update.getType()){
                     case 0://criar enc
                         this.order_id = Math.max(this.order_id,update.getIdEnc() + 1);
-
-                        String endDate = null;
-                        try {
-                            endDate = addTime(new Date(), 30*1000*60);
-                            orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),endDate));
-                            update.setEnd(endDate);
-                        } catch (ParseException e) {
-                            e.printStackTrace();
-                        }
-
+                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),0));
                         break;
                     case 1://add prod
                         orders.addProduct(update.getIdEnc(),new Pair(update.getIdProdAdd(),update.getQntProdAdd()));
@@ -184,10 +158,7 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
                 switch (update.getType()){
                     case 0://criar enc
                         order_id = Math.max(update.getIdEnc()+1,order_id);
-                        String endDate = addTime(new Date(), 30*1000*60);
-                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),endDate));
-                        update.setEnd(endDate);
-
+                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),0));
                         break;
                     case 1://add prod
                         orders.addProduct(update.getIdEnc(),new Pair(update.getIdProdAdd(),update.getQntProdAdd()));
@@ -211,9 +182,8 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
                 this.transactions.put(update.getTimestamp(),update);
                 this.com.sendMessage(m,dest);
                 System.out.println("Timestamp: " + this.timestamp);
-            } catch (ParseException e) {
-                e.printStackTrace();
-            } finally {
+            }
+            finally {
                 l.unlock();
             }
 
@@ -281,12 +251,7 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
         System.out.println("Timestamp copy: " + i);
         while (i < this.timestamp){
             StateUpdate u = transactions.get(i);
-
-
             if (u != null){
-                DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-
-                u.setActual(dateFormat.format(new Date()));
                 lst.add(u);
             }
             i++;
@@ -308,7 +273,6 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
             int encId = this.order_id++;
             Mensagem<Integer> msg = new Mensagem<>(idClient,"IniciarResp",encId);
             msg.setClientIP(m.clientIP);
-            msg.setResult(0);
             StateUpdate n_status = new StateUpdate(this.timestamp,idClient,encId);
             msg.setClockStub(timestamp);
             Mensagem<StateUpdate> mstate = new Mensagem<>("","STATEU",n_status);
@@ -329,13 +293,6 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
         Produto p = this.inventory.get(m.info);
 
         Mensagem<Produto> resp = new Mensagem<>(m.idClient,"ConsultarResp",p);
-
-        // erro, produto nao existe
-        if(p==null)
-            resp.setResult(1);
-        else
-            resp.setResult(0);
-
         resp.setClientIP(m.clientIP);
         this.com.send(resp);
     }
@@ -348,37 +305,23 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
             this.transaction_ongoing = true;
 
             Mensagem<Triple> msg = m;
-            int idEnc = (Integer) msg.info.fst;
-            int idProd = (Integer) msg.info.snd;
-            int quantidade = (Integer) msg.info.rd;
-
-            Produto p = null;
-            p = this.inventory.get(idProd);
+            int idEnc = msg.info.fst;
+            int idProd = msg.info.snd;
+            int quantidade = msg.info.rd;
 
             if (orders.containsKey(idEnc)){
-                if(p != null) {
-                    Mensagem<Boolean> resp = new Mensagem<>(m.idClient, "AdicionarResp", true);
-                    resp.setClientIP(m.clientIP);
-                    resp.setClockStub(timestamp);
-                    resp.setResult(0);
-                    StateUpdate n_status = new StateUpdate(this.timestamp, idEnc, idProd, quantidade);
-                    Mensagem<StateUpdate> mstate = new Mensagem<>("", "STATEU", n_status);
-                    mstate.setClockStub(timestamp);
-                    timestamp++;
-                    this.com.multicast(resp, mstate);
-                } else {
-                    Mensagem<Boolean> resp = new Mensagem<>(m.idClient,"AdicionarResp",false);
-                    resp.setResult(3);
-                    resp.setClientIP(m.clientIP);
-                    this.com.send(resp);
-                    this.transaction_ongoing = false;
-                    this.transactionNotify.signalAll();
-                }
+                Mensagem<Boolean> resp = new Mensagem<>(m.idClient,"AdicionarResp",true);
+                resp.setClientIP(m.clientIP);
+                resp.setClockStub(timestamp);
+                StateUpdate n_status = new StateUpdate(this.timestamp,idEnc,idProd,quantidade);
+                Mensagem<StateUpdate> mstate = new Mensagem<>("","STATEU",n_status);
+                mstate.setClockStub(timestamp);
+                timestamp++;
+                this.com.multicast(resp,mstate);
             }
             else{
                 //error, não encontrou o produto
                 Mensagem<Boolean> resp = new Mensagem<>(m.idClient,"AdicionarResp",false);
-                resp.setResult(2);
                 resp.setClientIP(m.clientIP);
                 this.com.send(resp);
                 this.transaction_ongoing = false;
@@ -419,7 +362,6 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
                     Mensagem<Boolean> resp = new Mensagem<>(m.idClient,"FinalizarResp",false);
                     resp.setClientIP(m.clientIP);
                     resp.setClockStub(timestamp);
-                    resp.setResult(4);
                     StateUpdate st = StateUpdate.finishEncUserFail(this.timestamp,idEnc);
                     Mensagem<StateUpdate> mstate = new Mensagem<>("","STATEU",st);
                     mstate.setClockStub(timestamp);
@@ -430,7 +372,6 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
                     Mensagem<Boolean> resp = new Mensagem<>(m.idClient,"FinalizarResp",true);
                     resp.setClientIP(m.clientIP);
                     resp.setClockStub(timestamp);
-                    resp.setResult(0);
                     StateUpdate st = new StateUpdate(timestamp,idEnc,e.getProds().values().stream().collect(Collectors.toList()));
                     Mensagem<StateUpdate> mstate = new Mensagem<>("","STATEU",st);
                     mstate.setClockStub(timestamp);
@@ -442,7 +383,6 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
                 //não existe a encomenda
                 Mensagem<Boolean> resp = new Mensagem<>(m.idClient,"FinalizarResp",false);
                 resp.setClientIP(m.clientIP);
-                resp.setResult(2);
                 this.com.send(resp);
                 this.transaction_ongoing = false;
                 this.transactionNotify.signalAll();
@@ -457,21 +397,50 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
         }
     }
 
+    private boolean lockOrderAndProducts(int idEnc, List<Pair> prods){
+        boolean flag = false;
+        List<Integer> prodIds = prods.stream().map(a -> a.idProd).collect(Collectors.toList());
 
-    public long subtime(String date1 ,Date date2) throws ParseException {
-        DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        Date dateEnd = dateFormat.parse(date1);
+        try{
+            l.lock();
 
-        long diff =Math.abs(dateEnd.toInstant().until(date2.toInstant(),ChronoUnit.MILLIS));
-       // Date fin = new Date(dateNow.getTime()+diff);
+            while (prodIds.stream().map(a -> this.concurrency_products.contains(a)).anyMatch(btrue -> btrue) || this.concurrency_orders.contains(idEnc))
+                this.transactionNotify.await();
 
-        return (diff);
+            this.concurrency_orders.add(idEnc);
+            this.concurrency_products.addAll(prodIds);
+
+            flag = true;
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+        finally {
+            l.unlock();
+        }
+
+        return flag;
     }
 
-    public String addTime(Date date1, long diff) throws ParseException {
-        DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        Date fin = new Date(date1.getTime()+diff);
+    private boolean lockOrder(int idEnc){
+        boolean flag = false;
+        try{
+            l.lock();
 
-        return (dateFormat.format(fin));
+            while(this.concurrency_orders.contains(idEnc))
+                this.transactionNotify.await();
+
+            this.concurrency_orders.add(idEnc);
+
+            flag = true;
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+        finally {
+            l.unlock();
+        }
+
+        return flag;
     }
 }

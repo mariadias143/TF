@@ -12,6 +12,7 @@ public class ClienteStub implements StubResponse<Mensagem> {
     private int n_pedido;
     private CompletableFuture result;
     private ClientCom com;
+    private int error;
 
     public ClienteStub(Serializer s) throws Exception{
         this.n_pedido = 0;
@@ -100,28 +101,50 @@ public class ClienteStub implements StubResponse<Mensagem> {
     private void handleIniciar(Mensagem response){
         Mensagem<Integer> r = (Mensagem<Integer>) response;
         if(response.idClient == ""){
-            result.complete(response.info);
+            result.complete(r.info);
+            this.error = r.result;
         }
     }
 
     private void handleConsultar(Mensagem response){
         Mensagem<Produto> r = (Mensagem<Produto>) response;
         if(response.idClient == ""){
-            result.complete(response.info);
+            result.complete(r.info);
+            this.error = r.result;
         }
     }
 
     private void handleAdicionar(Mensagem response){
         Mensagem<Boolean> r = (Mensagem<Boolean>) response;
         if(response.idClient == ""){
-            result.complete(response.info);
+            result.complete(r.info);
+            this.error = r.result;
         }
     }
 
     private void handleFinalizar(Mensagem response){
         Mensagem<Boolean> r = (Mensagem<Boolean>) response;
         if(response.idClient == ""){
-            result.complete(response.info);
+            result.complete(r.info);
+            this.error = r.result;
         }
+    }
+
+    public void printError(){
+        switch (this.error){
+            case 1:
+                System.out.println("Erro na consulta do produto. Produto não existe.");
+                break;
+            case 2:
+                System.out.println("Erro. Encomenda com o ID fornecido não existe.");
+                break;
+            case 3:
+                System.out.println("Erro. ID do produto não existe.");
+                break;
+            case 4:
+                System.out.println("Impossível finalizar encomenda. Stock indisponível.");
+                break;
+        }
+
     }
 }

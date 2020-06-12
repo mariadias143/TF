@@ -13,12 +13,17 @@ import Servidor.Database.Encomenda;
 import Servidor.Database.Pair;
 import Servidor.Database.Produto;
 import io.atomix.utils.serializer.Serializer;
+
 import spread.SpreadGroup;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import javax.print.DocFlavor;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.temporal.ChronoUnit;
+
+import java.time.LocalTime;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -27,6 +32,9 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
+
+import static java.lang.Thread.sleep;
+import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
 
 public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
@@ -75,7 +83,7 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
     }
 
     @Override
-    public void setStates(List<StateUpdate> oldEvents,List<GenericPair<StateUpdate,Mensagem>> queuedEvents) {
+    public void setStates(List<StateUpdate> oldEvents,List<GenericPair<StateUpdate,Mensagem>> queuedEvents){
         CompletableFuture f = CompletableFuture.runAsync(() -> {
             int max_timestamp = oldEvents.stream().mapToInt(a -> a.getTimestamp()).max().orElse(0);
             if(max_timestamp != 0){
@@ -86,7 +94,19 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
                 switch (update.getType()){
                     case 0://criar enc
                         this.order_id = Math.max(this.order_id,update.getIdEnc() + 1);
-                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),0));
+                        String end = (update.getEnd());
+                        try {
+                            long msfalta = subtime(end,new Date());
+                            String novofim = addTime(new Date(),msfalta);
+                            update.setEnd(novofim);
+
+                        // FIM-ATUAL = TEMPO QUE FALTA
+                        // Momento + Tempo que falta = FIM
+                        // ALTERAR NO STATE UPDATE AS VARIAVEIS DE TEMPO NO sTATE UPDATDE
+                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),novofim));
+                        } catch (ParseException e) {
+                            e.printStackTrace();
+                        }
                         break;
                     case 1://add prod
                         orders.addProduct(update.getIdEnc(),new Pair(update.getIdProdAdd(),update.getQntProdAdd()));
@@ -116,7 +136,16 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
                 switch (update.getType()){
                     case 0://criar enc
                         this.order_id = Math.max(this.order_id,update.getIdEnc() + 1);
-                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),0));
+
+                        String endDate = null;
+                        try {
+                            endDate = addTime(new Date(), 30*1000*60);
+                            orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),endDate));
+                            update.setEnd(endDate);
+                        } catch (ParseException e) {
+                            e.printStackTrace();
+                        }
+
                         break;
                     case 1://add prod
                         orders.addProduct(update.getIdEnc(),new Pair(update.getIdProdAdd(),update.getQntProdAdd()));
@@ -155,7 +184,10 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
                 switch (update.getType()){
                     case 0://criar enc
                         order_id = Math.max(update.getIdEnc()+1,order_id);
-                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),0));
+                        String endDate = addTime(new Date(), 30*1000*60);
+                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),endDate));
+                        update.setEnd(endDate);
+
                         break;
                     case 1://add prod
                         orders.addProduct(update.getIdEnc(),new Pair(update.getIdProdAdd(),update.getQntProdAdd()));
@@ -179,8 +211,9 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
                 this.transactions.put(update.getTimestamp(),update);
                 this.com.sendMessage(m,dest);
                 System.out.println("Timestamp: " + this.timestamp);
-            }
-            finally {
+            } catch (ParseException e) {
+                e.printStackTrace();
+            } finally {
                 l.unlock();
             }
 
@@ -248,7 +281,12 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
         System.out.println("Timestamp copy: " + i);
         while (i < this.timestamp){
             StateUpdate u = transactions.get(i);
+
+
             if (u != null){
+                DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+                u.setActual(dateFormat.format(new Date()));
                 lst.add(u);
             }
             i++;
@@ -392,5 +430,23 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
         finally {
             l.unlock();
         }
+    }
+
+
+    public long subtime(String date1 ,Date date2) throws ParseException {
+        DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        Date dateEnd = dateFormat.parse(date1);
+
+        long diff =Math.abs(dateEnd.toInstant().until(date2.toInstant(),ChronoUnit.MILLIS));
+       // Date fin = new Date(dateNow.getTime()+diff);
+
+        return (diff);
+    }
+
+    public String addTime(Date date1, long diff) throws ParseException {
+        DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        Date fin = new Date(date1.getTime()+diff);
+
+        return (dateFormat.format(fin));
     }
 }

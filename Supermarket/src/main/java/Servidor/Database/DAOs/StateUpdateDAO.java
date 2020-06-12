@@ -54,8 +54,10 @@ public class StateUpdateDAO implements Map<Integer, StateUpdate> {
                 su.setType(rs.getInt(2));
                 su.setUserId(rs.getString(3));
                 su.setIdEnc(rs.getInt(4));
-                su.setIdProdAdd(rs.getInt(5));
-                su.setQntProdAdd(rs.getInt(6));
+                su.setBegin(rs.getString(5));
+                su.setEnd(rs.getString(6));
+                su.setIdProdAdd(rs.getInt(7));
+                su.setQntProdAdd(rs.getInt(8));
 
                 sql = "SELECT * FROM State_RemProd  where timestam = ?";
                 pst=con.prepareStatement(sql);
@@ -82,14 +84,16 @@ public class StateUpdateDAO implements Map<Integer, StateUpdate> {
     public StateUpdate put(Integer key, StateUpdate value) {
         try{
             con = Connect.connect(this.connectString);
-            String sql = "insert into StateUpdate (timestam, type, userId,idEnc,idProdAdd,qntProdAdd) values (?, ?, ?,?,?,?)";
+            String sql = "insert into StateUpdate (timestam, type, userId,idEnc,inicial,final,idProdAdd,qntProdAdd) values (?, ?,?,? ?,?,?,?)";
             PreparedStatement pst = con.prepareStatement(sql);
             pst.setInt(1, (int)key);
             pst.setInt(2, value.getType());
             pst.setString(3, value.getUserId());
             pst.setInt(4, value.getIdEnc());
-            pst.setInt(5, value.getIdProdAdd());
-            pst.setInt(6, value.getQntProdAdd());
+            pst.setString(5,value.getBegin());
+            pst.setString(6,value.getEnd());
+            pst.setInt(7, value.getIdProdAdd());
+            pst.setInt(8, value.getQntProdAdd());
             int res = pst.executeUpdate();
 
             for(Pair p : value.getRemProd()) {

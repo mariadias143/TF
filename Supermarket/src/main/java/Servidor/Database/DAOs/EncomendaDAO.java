@@ -76,7 +76,6 @@ public class EncomendaDAO implements Map<Integer, Encomenda> {
             if (rs.next()) {
                 e.setIdEnc(rs.getInt(1));
                 e.setIdUser(rs.getString(2));
-                e.setTimeout(rs.getFloat(3));
 
                 sql = "SELECT * FROM Encomenda_Produtos where idEnc = ?";
                 pst = con.prepareStatement(sql);
@@ -103,11 +102,10 @@ public class EncomendaDAO implements Map<Integer, Encomenda> {
     public Encomenda put(Integer key, Encomenda value) {
         try {
             con = Connect.connect(this.connectString);
-            String sql = "insert into Encomenda (id, idUser, timeout) values (?, ?, ?)";
+            String sql = "insert into Encomenda (id, idUser) values (?, ?)";
             PreparedStatement pst = con.prepareStatement(sql);
             pst.setInt(1, value.getIdEnc());
             pst.setString(2, value.getIdUser());
-            pst.setFloat(3, value.getTimeout());
             int res = pst.executeUpdate();
 
             for (Pair p : value.getProds().values()) {

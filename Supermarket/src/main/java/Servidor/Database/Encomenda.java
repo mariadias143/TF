@@ -8,20 +8,20 @@ public class Encomenda {
     private int idEnc;
     private Map<Integer, Pair> prods;
     private String idUser;
-    private float timeout;
+    private String end;
 
-    public Encomenda(int idEnc,String idUser,float timeout){
+    public Encomenda(int idEnc,String idUser,String end){
         this.idEnc = idEnc;
         this.idUser = idUser;
         this.prods = new HashMap<>();
-        this.timeout = timeout;
+        this.end = end; // 1;
     }
 
     public Encomenda(){
         this.idEnc = 0;
         this.idUser = "";
         this.prods = new HashMap<>();
-        this.timeout= 0;
+        this.end ="";
 
     }
 
@@ -50,16 +50,19 @@ public class Encomenda {
         this.idUser = idUser;
     }
 
-    public float getTimeout() {
-        return timeout;
+
+    public String getEnd() {
+        return end;
     }
 
-    public void setTimeout(float timeout) {
-        this.timeout = timeout;
+    public void setEnd(String end) {
+        this.end = end;
     }
+
     public String toString(){
-        return "Servidor.Database.Encomenda [id:"+this.idEnc+" idUser:"+this.idUser+" timeout:"+this.timeout + "produts:" +this.prods+ "]";
+        return "Servidor.Database.Encomenda [id:"+this.idEnc+" idUser:"+this.idUser+"]";
     }
+
 
 
     public void addProd(int prod, int qnt){

@@ -2,7 +2,11 @@ package Communication;
 
 import Servidor.Database.Pair;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -33,6 +37,9 @@ public class StateUpdate{
     private int type; //0 create enc, 1 add, 2 fechar pelo user sucesso, 3 fechar user imp, 4 fechar server
     private String userId;
     private int idEnc;
+    private String begin;
+    private String actual;
+    private String end;
     private int idProdAdd;
     private int qntProdAdd;
     private List<Pair> remProd;
@@ -45,10 +52,19 @@ public class StateUpdate{
      */
 
     public StateUpdate(int timestamp,String userId,int idEnc){
+        Date dNow = new Date(System.currentTimeMillis());
+        Date dEnd  = new Date(System.currentTimeMillis()+ 30*10000);
+        DateFormat dateFormat = new SimpleDateFormat("yyyy-mm-dd hh:mm:ss");
+        String strDNow = dateFormat.format(dNow);
+        String strEnd = dateFormat.format(dEnd);
         this.timestamp = timestamp;
         this.userId = userId;
         this.type = 0;
         this.idEnc = idEnc;
+
+        this.begin = strDNow; // TEMPO ATUAL;
+        this.actual="";// ""
+        this.end=strEnd;// ATUAL + TIMEOUT
         this.idProdAdd = 0;
         this.qntProdAdd = 0;
         this.remProd = new ArrayList<>();
@@ -59,6 +75,9 @@ public class StateUpdate{
         this.userId = "";
         this.type = 1;
         this.idEnc = idEnc;
+        this.begin = "";
+        this.actual="";
+        this.end="";
         this.idProdAdd = idProd;
         this.qntProdAdd = qnt;
         this.remProd = new ArrayList<>();
@@ -69,6 +88,9 @@ public class StateUpdate{
         this.userId = "";
         this.type = 2;
         this.idEnc = idEnc;
+        this.begin = "";
+        this.actual="";
+        this.end="";
         this.idProdAdd = 0;
         this.qntProdAdd = 0;
         this.remProd = new ArrayList<>();
@@ -80,6 +102,9 @@ public class StateUpdate{
         this.userId = "";
         this.type = 1;
         this.idEnc = idEnc;
+        this.begin = "";
+        this.actual="";
+        this.end="";
         this.idProdAdd = 0;
         this.qntProdAdd = 0;
         this.remProd = new ArrayList<>();
@@ -137,6 +162,30 @@ public class StateUpdate{
         return userId;
     }
 
+    public String getBegin() {
+        return begin;
+    }
+
+    public void setBegin(String begin) {
+        this.begin = begin;
+    }
+
+    public String getActual() {
+        return actual;
+    }
+
+    public void setActual(String actual) {
+        this.actual = actual;
+    }
+
+    public String getEnd() {
+        return end;
+    }
+
+    public void setEnd(String end) {
+        this.end = end;
+    }
+
     public void setTimestamp(int timestamp) {
         this.timestamp = timestamp;
     }
@@ -164,4 +213,5 @@ public class StateUpdate{
     public void setRemProd(List<Pair> remProd) {
         this.remProd = remProd;
     }
+
 }

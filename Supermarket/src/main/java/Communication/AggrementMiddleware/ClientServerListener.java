@@ -10,10 +10,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class ClientServerListener implements BasicMessageListener {
-    private StubRequest<Mensagem> stub;
+    private StubRequest stub;
     private Serializer s;
 
-    public ClientServerListener(StubRequest<Mensagem> stub, Serializer s){
+    public ClientServerListener(StubRequest stub, Serializer s){
         this.stub = stub;
         this.s = s;
         System.out.println("Connectei");

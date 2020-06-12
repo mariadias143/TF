@@ -94,7 +94,7 @@ public class StateUpdateDAO implements Map<Integer, StateUpdate> {
 
             for(Pair p : value.getRemProd()) {
 
-                sql = "insert into  Encomenda_Produtos (timestam,idProd,quantidade) values (?,?,?)";
+                sql = "insert into  State_RemProd (timestam,idProd,quantidade) values (?,?,?)";
                 pst=con.prepareStatement(sql);
                 pst.setInt(1,key);
                 pst.setInt(2,p.idProd);

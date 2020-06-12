@@ -4,11 +4,11 @@ import spread.SpreadGroup;
 
 import java.util.List;
 
-public interface StubRequest<T> {
-    void handleRequest(T o);
-    void handleResponse(T o);
-    void setState(StateUpdate o);
-    void setStates(List<StateUpdate> o);
+public interface StubRequest<K> {
+    void handleRequest(Mensagem o);
+    void handleResponse(Mensagem o);
+    void setState(K o,Mensagem m, SpreadGroup dest);
+    void setStates(List<K> oldEvents,List<GenericPair<K,Mensagem>> queuedEvents);
     void transferState(int timestamp, SpreadGroup sender);
     void askState();
 }

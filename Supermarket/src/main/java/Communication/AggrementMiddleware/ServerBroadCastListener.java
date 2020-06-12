@@ -1,5 +1,6 @@
 package Communication.AggrementMiddleware;
 
+import Communication.GenericPair;
 import Communication.Mensagem;
 import Communication.StateUpdate;
 import Communication.StubRequest;
@@ -14,9 +15,10 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
-public class ServerBroadCastListener implements AdvancedMessageListener {
-    private StubRequest<Mensagem> stub;
+public class ServerBroadCastListener<T> implements AdvancedMessageListener {
+    private StubRequest stub;
     private ServerGroupCom com;
     private Serializer s;
     private LeaderQueue queue;
@@ -25,11 +27,12 @@ public class ServerBroadCastListener implements AdvancedMessageListener {
     private Map<Integer,PendingMsg> pendingMsgMap;
     private Set<String> view;
     private boolean iamleader;
-    private List<StateUpdate> pendingUpdates;
+    private List<T> pendingUpdates;
+    private List<GenericPair<T,Mensagem>> pendingACK;
     private Lock l;
 
 
-    public ServerBroadCastListener(StubRequest<Mensagem> stub,Serializer s,String id,ServerGroupCom com){
+    public ServerBroadCastListener(StubRequest stub,Serializer s,String id,ServerGroupCom com){
         this.stub = stub;
         this.s = s;
         this.id = id;
@@ -40,6 +43,7 @@ public class ServerBroadCastListener implements AdvancedMessageListener {
         this.view = new HashSet<>();
         this.iamleader = false;
         this.pendingUpdates = new ArrayList<>();
+        this.pendingACK = new ArrayList<>();
         this.l = new ReentrantLock();
     }
 
@@ -118,8 +122,9 @@ public class ServerBroadCastListener implements AdvancedMessageListener {
             Mensagem<StateUpdate> m = this.s.decode(spreadMessage.getData());
             //sou o leader e recebi o pedido
             if(queue.isLeader(this.id) && this.id.equals(sender) && m.type.equals("STATEU")){
-                stub.setState(m.info);
-                this.deliverMessage(this.id,m.clock);
+                stub.setState(m.info,new Mensagem("ACK",m.clock,m.privateSender),spreadMessage.getSender());
+                //this.deliverMessage(this.id,m.clock);
+                //com.sendMessage(new Mensagem("ACK",m.clock,m.privateSender),spreadMessage.getSender());
             }
             //transferência de estado, guarda as mensagens
             else if (!queue.isLeader(this.id) && !this.id.equals(sender) && m.type.equals("STATEU")){
@@ -128,7 +133,8 @@ public class ServerBroadCastListener implements AdvancedMessageListener {
                     l.lock();
                     flag = this.hasStarted;
                     if(!flag){
-                        this.pendingUpdates.add(m.info);
+                        //this.pendingUpdates.add((T)m.info);
+                        this.pendingACK.add(new GenericPair<>((T)m.info,new Mensagem("ACK",m.clock,m.privateSender),spreadMessage.getSender()));
                         System.out.println("Estado pendente");
                     }
                 }
@@ -137,9 +143,9 @@ public class ServerBroadCastListener implements AdvancedMessageListener {
                 }
 
                 if (flag){
-                    stub.setState(m.info);
+                    stub.setState((T)m.info,new Mensagem("ACK",m.clock,m.privateSender),spreadMessage.getSender());
                 }
-                com.sendMessage(new Mensagem("ACK",m.clock,m.privateSender),spreadMessage.getSender());
+                //com.sendMessage(new Mensagem("ACK",m.clock,m.privateSender),spreadMessage.getSender());
             }
             //pedido para enviar o estado
             else if (queue.isLeader(this.id) && !this.id.equals(sender) && m.type.equals("ASKSTATE")){
@@ -156,17 +162,15 @@ public class ServerBroadCastListener implements AdvancedMessageListener {
             //transferência de estado replica a receber o pedido
             else if(m.type.equals("STATE")){
                 System.out.println("Recebi estado");
-                List<StateUpdate> updates = (List<StateUpdate>) m.info;
+                List<T> updates = (List<T>) m.info;
                 try{
                     l.lock();
-                    this.pendingUpdates.forEach(a -> updates.add(a));
-                    this.pendingUpdates = new ArrayList<>();
+                    stub.setStates(updates,this.pendingACK.stream().collect(Collectors.toList()));
                     this.hasStarted = true;
                 }
                 finally {
                     l.unlock();
                 }
-                stub.setStates(updates);
             }
         }
     }

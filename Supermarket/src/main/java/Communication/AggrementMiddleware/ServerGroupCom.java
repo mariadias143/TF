@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class ServerGroupCom {
+public class ServerGroupCom<T> {
     private SpreadConnection connection;
     private String privateName;
     private Serializer s;
@@ -33,7 +33,7 @@ public class ServerGroupCom {
         this.connection = new SpreadConnection();
         this.s = s;
         this.stub = stub;
-        this.listener = new ServerBroadCastListener(stub,s,this.privateName,this);
+        this.listener = new ServerBroadCastListener<T>(stub,s,this.privateName,this);
         try{
             connection.connect(InetAddress.getByName("localhost"), 0,
                     privateName, false, true);

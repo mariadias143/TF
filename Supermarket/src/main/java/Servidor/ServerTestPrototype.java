@@ -16,7 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-
+/**
 public class ServerTestPrototype implements StubRequest<Mensagem>  {
     private ServerGroupCom com;
     private int timestamp = 0;
@@ -200,3 +200,4 @@ public class ServerTestPrototype implements StubRequest<Mensagem>  {
         }
     }
 }
+*/

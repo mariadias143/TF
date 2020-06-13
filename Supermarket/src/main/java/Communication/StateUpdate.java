@@ -3,7 +3,9 @@ package Communication;
 import Servidor.Database.Pair;
 
 import java.text.DateFormat;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -213,5 +215,29 @@ public class StateUpdate{
     public void setRemProd(List<Pair> remProd) {
         this.remProd = remProd;
     }
+
+
+    public void newTime() throws ParseException {
+        Date date2 = new Date();
+        DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        Date dateEnd = dateFormat.parse(this.end);
+
+        long diff =Math.abs(dateEnd.toInstant().until(date2.toInstant(), ChronoUnit.MILLIS));
+
+        this.end=dateFormat.format(date2.getTime() + diff);
+    }
+
+    public void newTime(long timeout) throws ParseException {
+        Date date2 = new Date();
+        DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        Date dateEnd = dateFormat.parse(this.end);
+
+        long diff =Math.abs(dateEnd.toInstant().until(date2.toInstant(), ChronoUnit.MILLIS));
+
+        this.end=dateFormat.format(date2.getTime() + timeout);
+    }
+
+
+
 
 }

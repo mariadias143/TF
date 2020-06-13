@@ -44,13 +44,14 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
     private StateUpdateDAO transactions;
     private EncomendaDAO orders;
     private int order_id = 0;
-    private ExecutorService pool;
-    private ExecutorService leaderTask;
+    private ExecutorService pool; //pool para os pedidos
+    private ExecutorService leaderTask; //pool para as task do leader
     private Lock l;
-    private boolean transaction_ongoing;
+    private boolean transaction_ongoing; //bool para verificar se há uma transação me curso
     private Condition transactionNotify;
-    private boolean isLeader;
-    private boolean ready;
+    private boolean isLeader; //flag que diz se é leader
+    private boolean ready; //flag que diz que se a reposição de estado já aconteceu
+    private Map<Integer,OrderTimeout> timeouts;
 
     public ServerTestPrototypeDAO(Serializer s,String name){
         this.inventory = new ProdutoDAO(name);
@@ -67,6 +68,7 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
         this.timestamp = lastStamp == -1 ? 0 : lastStamp + 1;
         this.order_id = lastOrder == -1 ? 0 : lastOrder + 1;
 
+        this.timeouts = new HashMap<>();
         this.leaderTask = Executors.newSingleThreadScheduledExecutor();
         this.pool = Executors.newFixedThreadPool(5);
         this.com = new ServerGroupCom<StateUpdate>(s,this);
@@ -206,7 +208,7 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
                 switch (update.getType()){
                     case 0://criar enc
                         localOrder_id = update.getIdEnc()+1;
-                        update.newTime(30*60*1000);
+                        update.newTime(60*1000);
                         orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),update.getEnd()));
                         System.out.println("SetState: " + update.getEnd());
 
@@ -243,7 +245,13 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
                 if (localOrder_id != -1){
                     order_id = Math.max(localOrder_id,order_id);
                 }
+                if (update.getType() == 0 && this.isLeader){
+                    this.timeouts.put(update.getIdEnc(),new OrderTimeout(update.getIdEnc(),this,update.getEnd()));
+                }
                 System.out.println("Timestamp: " + this.timestamp);
+            }
+            catch (Exception e){
+                e.printStackTrace();
             }
             finally {
                 l.unlock();
@@ -258,7 +266,8 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
             try{
                 l.lock();
                 System.out.println("Ping");
-                this.com.send(o);
+                if (o.clientIP != null)
+                    this.com.send(o);
 
                 this.transaction_ongoing = false;
                 this.transactionNotify.signalAll();
@@ -444,6 +453,13 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
                     }
                 }
 
+                //cancelar o timeout
+                OrderTimeout time = this.timeouts.get(idEnc);
+                if(time != null){
+                    time.delete();
+                    this.timeouts.remove(idEnc);
+                }
+
                 //não tem stock, encomenda tem que ser cancelada
                 if (flag == false){
                     Mensagem<Boolean> resp = new Mensagem<>(m.idClient,"FinalizarResp",false);
@@ -496,8 +512,15 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
                 this.ready = true;
                 this.transactionNotify.signalAll();
 
-                while (transaction_ongoing)
+                while(transaction_ongoing)
                     this.transactionNotify.await();
+
+                for(Encomenda e : this.orders.values()){
+                    timeouts.put(e.getIdEnc(),new OrderTimeout(e.getIdEnc(),this,e.getEnd()));
+                }
+
+                transaction_ongoing = false;
+                this.transactionNotify.signalAll();
             }
             catch (Exception e){
                 e.printStackTrace();
@@ -506,5 +529,40 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
                 l.unlock();
             }
         });
+    }
+
+    public void timeout(int idEnc){
+        CompletableFuture f = CompletableFuture.runAsync(() -> {
+            try{
+                l.lock();
+                while(transaction_ongoing)
+                    this.transactionNotify.await();
+
+                transaction_ongoing = true;
+
+                if (orders.containsKey(idEnc)){
+                    this.timeouts.remove(idEnc);
+
+                    Mensagem<Boolean> resp = new Mensagem<>("","ServFinEnc",false);
+                    resp.setClientIP(null);
+                    resp.setClockStub(timestamp);
+                    StateUpdate st1 = StateUpdate.finishEncServer(this.timestamp,idEnc);
+                    Mensagem<StateUpdate> mstate = new Mensagem<>("","STATEU",st1);
+                    mstate.setClockStub(timestamp);
+                    timestamp++;
+                    this.com.multicast(resp,mstate);
+                }
+                else{
+                    System.out.println("Order not found");
+                }
+            }
+            catch (Exception e){
+                e.printStackTrace();
+            }
+            finally {
+                l.unlock();
+            }
+
+        },this.leaderTask);
     }
 }

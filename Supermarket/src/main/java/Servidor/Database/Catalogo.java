@@ -18,11 +18,9 @@ public class Catalogo {
     private Connection con;
     // jdbc protocol - hsqldb type - file type - path to resource
     private String connectString = "jdbc:hsqldb:file:db-data/catalog";
-    private EncomendaDAO orders;
 
     public Catalogo(String name){
         this.connectString += name;
-        this.orders = new EncomendaDAO(connectString);
     }
 
     public void connectDB()throws Exception {

@@ -448,4 +448,9 @@ public class ServerConcurrency implements StubRequest<StateUpdate>  {
     public void notifyLeader() {
 
     }
+
+    @Override
+    public void timeout(int idEnc) {
+
+    }
 }

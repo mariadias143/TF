@@ -12,4 +12,5 @@ public interface StubRequest<K> {
     void transferState(int timestamp, SpreadGroup sender);
     void askState();
     void notifyLeader();
+    void timeout(int idEnc);
 }

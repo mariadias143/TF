@@ -26,7 +26,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 
-public class ServerConcorrencyTestDAO implements StubRequest<StateUpdate>  {
+public class ServerConcorrencyDAOStub implements StubRequest<StateUpdate>  {
     private ServerGroupCom com;
     private int timestamp = 0;
     private ProdutoDAO inventory;
@@ -45,7 +45,7 @@ public class ServerConcorrencyTestDAO implements StubRequest<StateUpdate>  {
     private boolean ready; //flag que diz que se a reposição de estado já aconteceu
     private Map<Integer,OrderTimeout> timeouts;
 
-    public ServerConcorrencyTestDAO(Serializer s, String name){
+    public ServerConcorrencyDAOStub(Serializer s, String name){
         this.inventory = new ProdutoDAO(name);
         this.transactions = new StateUpdateDAO(name);
         this.orders = new EncomendaDAO(name);

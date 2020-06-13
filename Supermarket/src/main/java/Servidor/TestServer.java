@@ -39,7 +39,7 @@ public class TestServer {
                 .build();
 
         //ServerTestPrototypeDAO stub = new ServerTestPrototypeDAO(s,name);
-        ServerConcorrencyTestDAO stub = new ServerConcorrencyTestDAO(s,name);
+        ServerConcorrencyDAOStub stub = new ServerConcorrencyDAOStub(s,name);
 
         CompletableFuture<Boolean> res = new CompletableFuture<Boolean>();
         res.get();

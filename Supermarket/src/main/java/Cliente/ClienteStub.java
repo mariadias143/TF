@@ -136,7 +136,7 @@ public class ClienteStub implements StubResponse<Mensagem> {
                 System.out.println("Erro na consulta do produto. Produto não existe.");
                 break;
             case 2:
-                System.out.println("Erro. Encomenda com o ID fornecido não existe.");
+                System.out.println("Erro. Encomenda com o ID fornecido não existe ou a encomenda expirou.");
                 break;
             case 3:
                 System.out.println("Erro. ID do produto não existe.");

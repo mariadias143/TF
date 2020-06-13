@@ -561,6 +561,9 @@ public class ServerConcorrencyTestDAO implements StubRequest<StateUpdate>  {
                     StateUpdate st1 = StateUpdate.finishEncServer(this.timestamp,idEnc);
                     Mensagem<StateUpdate> mstate = new Mensagem<>("","STATEU",st1);
                     mstate.setClockStub(timestamp);
+
+
+                    this.running_transactions.put(this.timestamp,new GenericPair<>(idEnc,null));
                     timestamp++;
                     this.com.multicast(resp,mstate);
                 }

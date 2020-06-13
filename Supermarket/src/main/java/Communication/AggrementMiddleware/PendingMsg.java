@@ -12,6 +12,7 @@ public class PendingMsg {
     private boolean selfDeliver;
     private Set<String> expected_acks;
     private String idserver;
+    private boolean nextView;
 
     public PendingMsg(Mensagem m,String idserver,Set<String> view){
         this.m = m;
@@ -19,6 +20,7 @@ public class PendingMsg {
         this.selfDeliver = false;
         this.expected_acks = new HashSet<>(view);
         this.idserver = idserver;
+        this.nextView = false;
     }
 
     public synchronized boolean mayDeliver(){
@@ -43,5 +45,22 @@ public class PendingMsg {
                 expected_acks.add(s);
             }
         }
+        else if (this.selfDeliver && !this.nextView){
+            this.nextView = true;
+            this.expected_acks = new HashSet<>();
+            for(String s : servers){
+                expected_acks.add(s);
+            }
+        }
+    }
+
+    public synchronized boolean remove(String s){
+        boolean flag = this.expected_acks.contains(s);
+
+        if(flag){
+            this.expected_acks.remove(s);
+        }
+
+        return flag;
     }
 }

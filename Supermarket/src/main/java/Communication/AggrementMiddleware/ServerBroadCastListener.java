@@ -89,9 +89,15 @@ public class ServerBroadCastListener<T> implements AdvancedMessageListener {
         //update view
         if (info.isCausedByJoin() | info.isCausedByLeave() | info.isCausedByDisconnect()){
             //atualizar as views das mensagens
-            if (this.iamleader == false && queue.isLeader(this.id)){
-                this.iamleader = true;
-                this.com.updateLeader();
+            try{
+                l.lock();
+                if (this.iamleader == false && queue.isLeader(this.id)){
+                    this.iamleader = true;
+                    this.com.updateLeader();
+                }
+            }
+            finally {
+                l.unlock();
             }
 
             synchronized (this.pendingMsgMap){
@@ -101,8 +107,40 @@ public class ServerBroadCastListener<T> implements AdvancedMessageListener {
                         String server_id = s.toString().split("#")[1];
                         this.view.add(server_id);
                     }
+                    this.pendingMsgMap.values().forEach(a -> a.updateView(this.view));
                 }
-                this.pendingMsgMap.values().forEach(a -> a.updateView(this.view));
+            }
+        }
+
+        if (info.isCausedByLeave() || info.isCausedByDisconnect()){
+            String name;
+            if (info.isCausedByLeave()){
+                name = info.getLeft().toString().split("#")[1];
+            }
+            else{
+                name = info.getDisconnected().toString().split("#")[1];
+            }
+            try{
+                l.lock();
+                List<Integer> clocks_to_rem = new ArrayList<>();
+                if(this.iamleader){
+                    synchronized (this.pendingMsgMap){
+                        for(Map.Entry<Integer,PendingMsg> pair : pendingMsgMap.entrySet()){
+                            PendingMsg msg = pair.getValue();
+                            msg.remove(name);
+
+                            if (msg.mayDeliver()){
+                                //deliver ao stub
+                                this.stub.handleResponse(msg.getMessage());
+                                clocks_to_rem.add(pair.getKey());
+                            }
+                        }
+                        clocks_to_rem.forEach(a -> this.pendingMsgMap.remove(a));
+                    }
+                }
+            }
+            finally {
+                l.unlock();
             }
         }
     }

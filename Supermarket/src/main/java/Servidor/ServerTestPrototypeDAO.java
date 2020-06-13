@@ -99,30 +99,28 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
                 }
 
                 for(StateUpdate update : oldEvents){
-                    switch (update.getType()){
+                    switch (update.getType()) {
                         case 0://criar enc
-                            this.order_id = Math.max(this.order_id,update.getIdEnc() + 1);
+                            this.order_id = Math.max(this.order_id, update.getIdEnc() + 1);
                             String end = (update.getEnd());
                             try {
-                                long msfalta = subtime(end,new Date());
-                                String novofim = addTime(new Date(),msfalta);
-                                update.setEnd(novofim);
+                                update.newTime();
 
                                 // FIM-ATUAL = TEMPO QUE FALTA
                                 // Momento + Tempo que falta = FIM
                                 // ALTERAR NO STATE UPDATE AS VARIAVEIS DE TEMPO NO sTATE UPDATDE
-                                System.out.println("SetStates Old: " + novofim);
-                                orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),novofim));
+                                System.out.println("SetStates Old: " + update.getEnd());
+                                orders.put(update.getIdEnc(), new Encomenda(update.getIdEnc(), update.getUserId(), update.getEnd()));
                             } catch (Exception e) {
                                 e.printStackTrace();
                             }
                             break;
                         case 1://add prod
-                            orders.addProduct(update.getIdEnc(),new Pair(update.getIdProdAdd(),update.getQntProdAdd()));
+                            orders.addProduct(update.getIdEnc(), new Pair(update.getIdProdAdd(), update.getQntProdAdd()));
                             break;
                         case 2://sucesso da enc
-                            for(Pair p : update.getRemProd()){
-                                this.inventory.updateStock(p.idProd,-p.qntProd);
+                            for (Pair p : update.getRemProd()) {
+                                this.inventory.updateStock(p.idProd, -p.qntProd);
                             }
                             this.orders.remove(update.getIdEnc());
                             break;
@@ -148,12 +146,10 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
 
                             String endDate = null;
                             try {
-                                endDate = addTime(new Date(), 30*1000*60);
-                                orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),endDate));
-                                update.setEnd(endDate);
-                                System.out.println("SetStates Old: " + endDate);
-                            }
-                            catch (Exception e) {
+                                update.newTime(30*60*1000);
+                                orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),update.getEnd()));
+
+                            } catch (ParseException e) {
                                 e.printStackTrace();
                             }
 
@@ -204,39 +200,42 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
             finally {
                 l.unlock();
             }
-
             int localTimestamp = update.getTimestamp()+1;
             int localOrder_id = -1;
-            switch (update.getType()){
-                case 0://criar enc
-                    localOrder_id = update.getIdEnc()+1;
-                    String endDate = addTime(new Date(), 30*1000*60);
-                    orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),endDate));
-                    update.setEnd(endDate);
-                    System.out.println("SetState: " + endDate);
+            try{
+                switch (update.getType()){
+                    case 0://criar enc
+                        localOrder_id = update.getIdEnc()+1;
+                        update.newTime(30*60*1000);
+                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),update.getEnd()));
+                        System.out.println("SetState: " + update.getEnd());
 
-                    break;
-                case 1://add prod
-                    orders.addProduct(update.getIdEnc(),new Pair(update.getIdProdAdd(),update.getQntProdAdd()));
-                    break;
-                case 2://sucesso da enc
-                    for(Pair p : update.getRemProd()){
-                        this.inventory.updateStock(p.idProd,-p.qntProd);
+                        break;
+                    case 1://add prod
+                        orders.addProduct(update.getIdEnc(),new Pair(update.getIdProdAdd(),update.getQntProdAdd()));
+                        break;
+                    case 2://sucesso da enc
+                        for(Pair p : update.getRemProd()){
+                            this.inventory.updateStock(p.idProd,-p.qntProd);
+                        }
+                        this.orders.remove(update.getIdEnc());
+                        break;
+                    case 3: //failure do client
+                        this.orders.remove(update.getIdEnc());
+                        break;
+                    case 4:
+                        this.orders.remove(update.getIdEnc());
+                        break;
+                    default: {
+                        System.out.println("Error");
                     }
-                    this.orders.remove(update.getIdEnc());
-                    break;
-                case 3: //failure do client
-                    this.orders.remove(update.getIdEnc());
-                    break;
-                case 4:
-                    this.orders.remove(update.getIdEnc());
-                    break;
-                default: {
-                    System.out.println("Error");
                 }
+                this.transactions.put(update.getTimestamp(),update);
+                this.com.sendMessage(m,dest);
             }
-            this.transactions.put(update.getTimestamp(),update);
-            this.com.sendMessage(m,dest);
+            catch (Exception e){
+                e.printStackTrace();
+            }
 
             try{
                 l.lock();
@@ -507,23 +506,5 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
                 l.unlock();
             }
         });
-    }
-
-
-    public long subtime(String date1 ,Date date2) throws ParseException {
-        DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        Date dateEnd = dateFormat.parse(date1);
-
-        long diff =Math.abs(dateEnd.toInstant().until(date2.toInstant(),ChronoUnit.MILLIS));
-       // Date fin = new Date(dateNow.getTime()+diff);
-
-        return (diff);
-    }
-
-    public String addTime(Date date1, long diff) {
-        DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        Date fin = new Date(date1.getTime()+diff);
-
-        return (dateFormat.format(fin));
     }
 }

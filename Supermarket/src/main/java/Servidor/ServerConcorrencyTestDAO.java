@@ -15,6 +15,7 @@ import Servidor.Database.Produto;
 import io.atomix.utils.serializer.Serializer;
 import spread.SpreadGroup;
 
+import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -32,14 +33,17 @@ public class ServerConcorrencyTestDAO implements StubRequest<StateUpdate>  {
     private StateUpdateDAO transactions;
     private EncomendaDAO orders;
     private int order_id = 0;
-    private ExecutorService pool;
+    private ExecutorService pool; //handle requests
+    private ExecutorService write_pool; //handle setStates
+    private ExecutorService leaderTask; //pool para as task do leader
     private Lock l;
-    private boolean transaction_ongoing;
     private Condition transactionNotify;
-    private Set<Integer> concurrency_orders;
-    private Set<Integer> concurrency_products;
+    private Set<Integer> concurrency_orders; //simulação de locks para as ordens
+    private Set<Integer> concurrency_products; //simulação de lock para os produtos
     private Map<Integer,GenericPair<Integer,List<Integer>>> running_transactions;
-    private int teste;
+    private boolean isLeader; //flag que diz se é leader
+    private boolean ready; //flag que diz que se a reposição de estado já aconteceu
+    private Map<Integer,OrderTimeout> timeouts;
 
     public ServerConcorrencyTestDAO(Serializer s, String name){
         this.inventory = new ProdutoDAO(name);
@@ -49,15 +53,20 @@ public class ServerConcorrencyTestDAO implements StubRequest<StateUpdate>  {
         int lastOrder = orders.lastId();
         this.l = new ReentrantLock();
         this.transactionNotify = this.l.newCondition();
-        this.transaction_ongoing = false;
         concurrency_orders = new HashSet<>();
         concurrency_products = new HashSet<>();
         running_transactions = new HashMap<>();
+        this.isLeader = false;
+        this.ready = false;
+
 
         this.timestamp = lastStamp == -1 ? 0 : lastStamp + 1;
         this.order_id = lastOrder == -1 ? 0 : lastOrder + 1;
 
+        this.timeouts = new HashMap<>();
+        this.leaderTask = Executors.newSingleThreadScheduledExecutor();
         this.pool = Executors.newFixedThreadPool(5);
+        this.write_pool = Executors.newFixedThreadPool(5);
         this.com = new ServerGroupCom<StateUpdate>(s,this);
     }
 
@@ -74,22 +83,31 @@ public class ServerConcorrencyTestDAO implements StubRequest<StateUpdate>  {
             finally {
                 l.unlock();
             }
-        },this.pool);
+        },this.write_pool);
     }
 
     @Override
     public void setStates(List<StateUpdate> oldEvents,List<GenericPair<StateUpdate,Mensagem>> queuedEvents) {
         CompletableFuture f = CompletableFuture.runAsync(() -> {
+            int localTimestamp = 0;
+            int localOrder_id = 0;
             int max_timestamp = oldEvents.stream().mapToInt(a -> a.getTimestamp()).max().orElse(0);
             if(max_timestamp != 0){
-                this.timestamp = max_timestamp + 1;
+                localTimestamp = max_timestamp + 1;
             }
 
             for(StateUpdate update : oldEvents){
                 switch (update.getType()){
                     case 0://criar enc
-                        this.order_id = Math.max(this.order_id,update.getIdEnc() + 1);
-                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),""));
+                        localOrder_id = Math.max(localOrder_id,update.getIdEnc() + 1);
+                        try{
+                            update.newTime();
+                            System.out.println("SetStates Old: " + update.getEnd());
+                            orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(), update.getEnd()));
+                        }
+                        catch (Exception e){
+                            e.printStackTrace();
+                        }
                         break;
                     case 1://add prod
                         orders.addProduct(update.getIdEnc(),new Pair(update.getIdProdAdd(),update.getQntProdAdd()));
@@ -115,11 +133,17 @@ public class ServerConcorrencyTestDAO implements StubRequest<StateUpdate>  {
 
             for(GenericPair<StateUpdate,Mensagem> aux: queuedEvents){
                 StateUpdate update = aux.fst;
-                this.timestamp = Math.max(this.timestamp,update.getTimestamp()+1);
+                localTimestamp = Math.max(localTimestamp,update.getTimestamp()+1);
                 switch (update.getType()){
                     case 0://criar enc
-                        this.order_id = Math.max(this.order_id,update.getIdEnc() + 1);
-                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),""));
+                        localOrder_id = Math.max(localOrder_id,update.getIdEnc() + 1);
+                        try {
+                            update.newTime(30*60*1000);
+                            orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),update.getEnd()));
+
+                        } catch (ParseException e) {
+                            e.printStackTrace();
+                        }
                         break;
                     case 1://add prod
                         orders.addProduct(update.getIdEnc(),new Pair(update.getIdProdAdd(),update.getQntProdAdd()));
@@ -144,8 +168,18 @@ public class ServerConcorrencyTestDAO implements StubRequest<StateUpdate>  {
                 this.com.sendMessage(aux.snd,aux.destination);
             }
 
-            System.out.println("My timestamp after recovery: " + this.timestamp);
-        },this.pool);
+            try{
+                l.lock();
+                this.timestamp = Math.max(this.timestamp,localTimestamp);
+                this.order_id = Math.max(this.order_id,localOrder_id);
+                System.out.println("My timestamp after recovery: " + this.timestamp);
+                this.ready = true;
+                this.transactionNotify.signalAll();
+            }
+            finally {
+                l.unlock();
+            }
+        },this.write_pool);
     }
 
     @Override
@@ -154,11 +188,24 @@ public class ServerConcorrencyTestDAO implements StubRequest<StateUpdate>  {
             System.out.println("Update State");
             try{
                 l.lock();
-                this.timestamp = Math.max(this.timestamp,update.getTimestamp()+1);
+                while (!this.ready)
+                    this.transactionNotify.signalAll();
+            }
+            finally {
+                l.unlock();
+            }
+
+            int localTimestamp = update.getTimestamp()+1;
+            int localOrder_id = 0;
+
+            try{
                 switch (update.getType()){
                     case 0://criar enc
-                        order_id = Math.max(update.getIdEnc()+1,order_id);
-                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),""));
+                        localOrder_id = update.getIdEnc()+1;
+                        update.newTime(60*1000);
+                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),update.getEnd()));
+                        System.out.println("SetState: " + update.getEnd());
+
                         break;
                     case 1://add prod
                         orders.addProduct(update.getIdEnc(),new Pair(update.getIdProdAdd(),update.getQntProdAdd()));
@@ -181,13 +228,29 @@ public class ServerConcorrencyTestDAO implements StubRequest<StateUpdate>  {
                 }
                 this.transactions.put(update.getTimestamp(),update);
                 this.com.sendMessage(m,dest);
+            }
+            catch (Exception e){
+                e.printStackTrace();
+            }
+
+            try{
+                l.lock();
+                this.timestamp = Math.max(this.timestamp,localTimestamp);
+                order_id = Math.max(localOrder_id,order_id);
+
+                if (update.getType() == 0 && this.isLeader){
+                    this.timeouts.put(update.getIdEnc(),new OrderTimeout(update.getIdEnc(),this,update.getEnd()));
+                }
                 System.out.println("Timestamp: " + this.timestamp);
+            }
+            catch (Exception e){
+                e.printStackTrace();
             }
             finally {
                 l.unlock();
             }
 
-        },this.pool);
+        },this.write_pool);
     }
 
     @Override
@@ -196,7 +259,8 @@ public class ServerConcorrencyTestDAO implements StubRequest<StateUpdate>  {
             try{
                 l.lock();
                 System.out.println("Ping");
-                this.com.send(o);
+                if (o.clientIP != null)
+                    this.com.send(o);
 
                 GenericPair<Integer,List<Integer>> locks = this.running_transactions.get(o.StubClock);
 
@@ -208,7 +272,7 @@ public class ServerConcorrencyTestDAO implements StubRequest<StateUpdate>  {
             finally {
                 l.unlock();
             }
-        },this.pool);
+        },this.write_pool);
     }
 
     @Override
@@ -246,9 +310,10 @@ public class ServerConcorrencyTestDAO implements StubRequest<StateUpdate>  {
                 l.unlock();
             }
 
-        },this.pool);
+        },this.write_pool);
     }
 
+    //melhorar para concorrência, possíveis buracos
     private void internalTransfer(int timestamp, SpreadGroup sender){
         List<StateUpdate> lst = new ArrayList<>();
         int i = timestamp;
@@ -384,7 +449,6 @@ public class ServerConcorrencyTestDAO implements StubRequest<StateUpdate>  {
                     while (this.concurrency_products.contains(prodId))
                         this.transactionNotify.await();
                     this.concurrency_products.add(prodId);
-
                 }
                 /**
                 while (prodIds.stream().map(a -> this.concurrency_products.contains(a)).anyMatch(btrue -> btrue))
@@ -399,6 +463,12 @@ public class ServerConcorrencyTestDAO implements StubRequest<StateUpdate>  {
                         flag = false;
                         break;
                     }
+                }
+
+                OrderTimeout time = this.timeouts.get(idEnc);
+                if(time != null){
+                    time.delete();
+                    this.timeouts.remove(idEnc);
                 }
 
                 int localtimestamp = this.timestamp;
@@ -449,11 +519,64 @@ public class ServerConcorrencyTestDAO implements StubRequest<StateUpdate>  {
 
     @Override
     public void notifyLeader() {
+        this.leaderTask.submit(() -> {
+            try{
+                l.lock();
+                this.isLeader = true;
+                this.ready = true;
 
+                for(Encomenda e : this.orders.values()){
+                    timeouts.put(e.getIdEnc(),new OrderTimeout(e.getIdEnc(),this,e.getEnd()));
+                }
+
+                this.transactionNotify.signalAll();
+            }
+            catch (Exception e){
+                e.printStackTrace();
+            }
+            finally {
+                l.unlock();
+            }
+        });
     }
 
     @Override
     public void timeout(int idEnc) {
+        CompletableFuture f = CompletableFuture.runAsync(() -> {
+            try{
+                l.lock();
 
+                //lock da encomenda
+                while(this.concurrency_orders.contains(idEnc))
+                    this.transactionNotify.await();
+                this.concurrency_orders.add(idEnc);
+
+
+                if (orders.containsKey(idEnc)){
+                    this.timeouts.remove(idEnc);
+
+                    Mensagem<Boolean> resp = new Mensagem<>("","ServFinEnc",false);
+                    resp.setClientIP(null);
+                    resp.setClockStub(timestamp);
+                    StateUpdate st1 = StateUpdate.finishEncServer(this.timestamp,idEnc);
+                    Mensagem<StateUpdate> mstate = new Mensagem<>("","STATEU",st1);
+                    mstate.setClockStub(timestamp);
+                    timestamp++;
+                    this.com.multicast(resp,mstate);
+                }
+                else{
+                    System.out.println("Order not found");
+                    this.concurrency_orders.remove(idEnc);
+                    this.transactionNotify.signalAll();
+                }
+            }
+            catch (Exception e){
+                e.printStackTrace();
+            }
+            finally {
+                l.unlock();
+            }
+
+        },this.leaderTask);
     }
 }

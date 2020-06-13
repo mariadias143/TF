@@ -178,4 +178,31 @@ public class StateUpdateDAO implements Map<Integer, StateUpdate> {
         return timestamp;
 
     }
+
+
+    public Collection<Integer> allTimestamp(){
+        List<Integer> timestamps = new ArrayList<>();
+
+        try {
+            con = Connect.connect(this.connectString);
+            String sql = "SELECT DISTINCT timestam FROM StateUpdate ";
+            PreparedStatement pst = con.prepareStatement(sql);
+            ResultSet rs = pst.executeQuery();
+            while (rs.next()) {
+                 int t = (rs.getInt(1));
+                 timestamps.add(t);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                con.close();
+                return timestamps;
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
+            }
+        }
+
+        return timestamps;
+    }
 }

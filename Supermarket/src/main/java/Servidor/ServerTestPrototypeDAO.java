@@ -45,9 +45,12 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
     private EncomendaDAO orders;
     private int order_id = 0;
     private ExecutorService pool;
+    private ExecutorService leaderTask;
     private Lock l;
     private boolean transaction_ongoing;
     private Condition transactionNotify;
+    private boolean isLeader;
+    private boolean ready;
 
     public ServerTestPrototypeDAO(Serializer s,String name){
         this.inventory = new ProdutoDAO(name);
@@ -58,10 +61,13 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
         this.l = new ReentrantLock();
         this.transactionNotify = this.l.newCondition();
         this.transaction_ongoing = false;
+        this.isLeader = false;
+        this.ready = false;
 
         this.timestamp = lastStamp == -1 ? 0 : lastStamp + 1;
         this.order_id = lastOrder == -1 ? 0 : lastOrder + 1;
 
+        this.leaderTask = Executors.newSingleThreadScheduledExecutor();
         this.pool = Executors.newFixedThreadPool(5);
         this.com = new ServerGroupCom<StateUpdate>(s,this);
     }
@@ -85,92 +91,102 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
     @Override
     public void setStates(List<StateUpdate> oldEvents,List<GenericPair<StateUpdate,Mensagem>> queuedEvents){
         CompletableFuture f = CompletableFuture.runAsync(() -> {
-            int max_timestamp = oldEvents.stream().mapToInt(a -> a.getTimestamp()).max().orElse(0);
-            if(max_timestamp != 0){
-                this.timestamp = max_timestamp + 1;
-            }
-
-            for(StateUpdate update : oldEvents){
-                switch (update.getType()){
-                    case 0://criar enc
-                        this.order_id = Math.max(this.order_id,update.getIdEnc() + 1);
-                        String end = (update.getEnd());
-                        try {
-                            long msfalta = subtime(end,new Date());
-                            String novofim = addTime(new Date(),msfalta);
-                            update.setEnd(novofim);
-
-                        // FIM-ATUAL = TEMPO QUE FALTA
-                        // Momento + Tempo que falta = FIM
-                        // ALTERAR NO STATE UPDATE AS VARIAVEIS DE TEMPO NO sTATE UPDATDE
-                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),novofim));
-                        } catch (ParseException e) {
-                            e.printStackTrace();
-                        }
-                        break;
-                    case 1://add prod
-                        orders.addProduct(update.getIdEnc(),new Pair(update.getIdProdAdd(),update.getQntProdAdd()));
-                        break;
-                    case 2://sucesso da enc
-                        for(Pair p : update.getRemProd()){
-                            this.inventory.updateStock(p.idProd,-p.qntProd);
-                        }
-                        this.orders.remove(update.getIdEnc());
-                        break;
-                    case 3: //failure do client
-                        this.orders.remove(update.getIdEnc());
-                        break;
-                    case 4://failure do server
-                        this.orders.remove(update.getIdEnc());
-                        break;
-                    default: {
-                        System.out.println("Error");
-                    }
+            try{
+                l.lock();
+                int max_timestamp = oldEvents.stream().mapToInt(a -> a.getTimestamp()).max().orElse(0);
+                if(max_timestamp != 0){
+                    this.timestamp = max_timestamp + 1;
                 }
-                this.transactions.put(update.getTimestamp(),update);
-            }
 
-            for(GenericPair<StateUpdate,Mensagem> aux: queuedEvents){
-                StateUpdate update = aux.fst;
-                this.timestamp = Math.max(this.timestamp,update.getTimestamp()+1);
-                switch (update.getType()){
-                    case 0://criar enc
-                        this.order_id = Math.max(this.order_id,update.getIdEnc() + 1);
+                for(StateUpdate update : oldEvents){
+                    switch (update.getType()){
+                        case 0://criar enc
+                            this.order_id = Math.max(this.order_id,update.getIdEnc() + 1);
+                            String end = (update.getEnd());
+                            try {
+                                long msfalta = subtime(end,new Date());
+                                String novofim = addTime(new Date(),msfalta);
+                                update.setEnd(novofim);
 
-                        String endDate = null;
-                        try {
-                            endDate = addTime(new Date(), 30*1000*60);
-                            orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),endDate));
-                            update.setEnd(endDate);
-                        } catch (ParseException e) {
-                            e.printStackTrace();
+                                // FIM-ATUAL = TEMPO QUE FALTA
+                                // Momento + Tempo que falta = FIM
+                                // ALTERAR NO STATE UPDATE AS VARIAVEIS DE TEMPO NO sTATE UPDATDE
+                                System.out.println("SetStates Old: " + novofim);
+                                orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),novofim));
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                            break;
+                        case 1://add prod
+                            orders.addProduct(update.getIdEnc(),new Pair(update.getIdProdAdd(),update.getQntProdAdd()));
+                            break;
+                        case 2://sucesso da enc
+                            for(Pair p : update.getRemProd()){
+                                this.inventory.updateStock(p.idProd,-p.qntProd);
+                            }
+                            this.orders.remove(update.getIdEnc());
+                            break;
+                        case 3: //failure do client
+                            this.orders.remove(update.getIdEnc());
+                            break;
+                        case 4://failure do server
+                            this.orders.remove(update.getIdEnc());
+                            break;
+                        default: {
+                            System.out.println("Error");
                         }
-
-                        break;
-                    case 1://add prod
-                        orders.addProduct(update.getIdEnc(),new Pair(update.getIdProdAdd(),update.getQntProdAdd()));
-                        break;
-                    case 2://sucesso da enc
-                        for(Pair p : update.getRemProd()){
-                            this.inventory.updateStock(p.idProd,-p.qntProd);
-                        }
-                        this.orders.remove(update.getIdEnc());
-                        break;
-                    case 3: //failure do client
-                        this.orders.remove(update.getIdEnc());
-                        break;
-                    case 4://failure do server
-                        this.orders.remove(update.getIdEnc());
-                        break;
-                    default: {
-                        System.out.println("Error");
                     }
+                    this.transactions.put(update.getTimestamp(),update);
                 }
-                this.transactions.put(update.getTimestamp(),update);
-                this.com.sendMessage(aux.snd,aux.destination);
-            }
 
-            System.out.println("My timestamp after recovery: " + this.timestamp);
+                for(GenericPair<StateUpdate,Mensagem> aux: queuedEvents){
+                    StateUpdate update = aux.fst;
+                    this.timestamp = Math.max(this.timestamp,update.getTimestamp()+1);
+                    switch (update.getType()){
+                        case 0://criar enc
+                            this.order_id = Math.max(this.order_id,update.getIdEnc() + 1);
+
+                            String endDate = null;
+                            try {
+                                endDate = addTime(new Date(), 30*1000*60);
+                                orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),endDate));
+                                update.setEnd(endDate);
+                                System.out.println("SetStates Old: " + endDate);
+                            }
+                            catch (Exception e) {
+                                e.printStackTrace();
+                            }
+
+                            break;
+                        case 1://add prod
+                            orders.addProduct(update.getIdEnc(),new Pair(update.getIdProdAdd(),update.getQntProdAdd()));
+                            break;
+                        case 2://sucesso da enc
+                            for(Pair p : update.getRemProd()){
+                                this.inventory.updateStock(p.idProd,-p.qntProd);
+                            }
+                            this.orders.remove(update.getIdEnc());
+                            break;
+                        case 3: //failure do client
+                            this.orders.remove(update.getIdEnc());
+                            break;
+                        case 4://failure do server
+                            this.orders.remove(update.getIdEnc());
+                            break;
+                        default: {
+                            System.out.println("Error");
+                        }
+                    }
+                    this.transactions.put(update.getTimestamp(),update);
+                    this.com.sendMessage(aux.snd,aux.destination);
+                }
+                System.out.println("My timestamp after recovery: " + this.timestamp);
+                this.ready = true;
+                this.transactionNotify.signalAll();
+            }
+            finally {
+                l.unlock();
+            }
         },this.pool);
     }
 
@@ -178,42 +194,59 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
     public void setState(StateUpdate update,Mensagem m,SpreadGroup dest) {
         CompletableFuture f = CompletableFuture.runAsync(() -> {
             System.out.println("Update State");
+
+            //garantir que já restaurou o estado.
             try{
                 l.lock();
-                this.timestamp = Math.max(this.timestamp,update.getTimestamp()+1);
-                switch (update.getType()){
-                    case 0://criar enc
-                        order_id = Math.max(update.getIdEnc()+1,order_id);
-                        String endDate = addTime(new Date(), 30*1000*60);
-                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),endDate));
-                        update.setEnd(endDate);
+                while (!this.ready)
+                    this.transactionNotify.signalAll();
+            }
+            finally {
+                l.unlock();
+            }
 
-                        break;
-                    case 1://add prod
-                        orders.addProduct(update.getIdEnc(),new Pair(update.getIdProdAdd(),update.getQntProdAdd()));
-                        break;
-                    case 2://sucesso da enc
-                        for(Pair p : update.getRemProd()){
-                            this.inventory.updateStock(p.idProd,-p.qntProd);
-                        }
-                        this.orders.remove(update.getIdEnc());
-                        break;
-                    case 3: //failure do client
-                        this.orders.remove(update.getIdEnc());
-                        break;
-                    case 4:
-                        this.orders.remove(update.getIdEnc());
-                        break;
-                    default: {
-                        System.out.println("Error");
+            int localTimestamp = update.getTimestamp()+1;
+            int localOrder_id = -1;
+            switch (update.getType()){
+                case 0://criar enc
+                    localOrder_id = update.getIdEnc()+1;
+                    String endDate = addTime(new Date(), 30*1000*60);
+                    orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),endDate));
+                    update.setEnd(endDate);
+                    System.out.println("SetState: " + endDate);
+
+                    break;
+                case 1://add prod
+                    orders.addProduct(update.getIdEnc(),new Pair(update.getIdProdAdd(),update.getQntProdAdd()));
+                    break;
+                case 2://sucesso da enc
+                    for(Pair p : update.getRemProd()){
+                        this.inventory.updateStock(p.idProd,-p.qntProd);
                     }
+                    this.orders.remove(update.getIdEnc());
+                    break;
+                case 3: //failure do client
+                    this.orders.remove(update.getIdEnc());
+                    break;
+                case 4:
+                    this.orders.remove(update.getIdEnc());
+                    break;
+                default: {
+                    System.out.println("Error");
                 }
-                this.transactions.put(update.getTimestamp(),update);
-                this.com.sendMessage(m,dest);
+            }
+            this.transactions.put(update.getTimestamp(),update);
+            this.com.sendMessage(m,dest);
+
+            try{
+                l.lock();
+                this.timestamp = Math.max(this.timestamp,localTimestamp);
+                if (localOrder_id != -1){
+                    order_id = Math.max(localOrder_id,order_id);
+                }
                 System.out.println("Timestamp: " + this.timestamp);
-            } catch (ParseException e) {
-                e.printStackTrace();
-            } finally {
+            }
+            finally {
                 l.unlock();
             }
 
@@ -282,10 +315,8 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
         while (i < this.timestamp){
             StateUpdate u = transactions.get(i);
 
-
             if (u != null){
                 DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-
                 u.setActual(dateFormat.format(new Date()));
                 lst.add(u);
             }
@@ -457,6 +488,27 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
         }
     }
 
+    @Override
+    public void notifyLeader() {
+        this.leaderTask.submit(() -> {
+            try{
+                l.lock();
+                this.isLeader = true;
+                this.ready = true;
+                this.transactionNotify.signalAll();
+
+                while (transaction_ongoing)
+                    this.transactionNotify.await();
+            }
+            catch (Exception e){
+                e.printStackTrace();
+            }
+            finally {
+                l.unlock();
+            }
+        });
+    }
+
 
     public long subtime(String date1 ,Date date2) throws ParseException {
         DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -468,7 +520,7 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
         return (diff);
     }
 
-    public String addTime(Date date1, long diff) throws ParseException {
+    public String addTime(Date date1, long diff) {
         DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         Date fin = new Date(date1.getTime()+diff);
 

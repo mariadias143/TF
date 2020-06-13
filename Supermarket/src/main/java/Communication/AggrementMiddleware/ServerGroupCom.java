@@ -136,6 +136,7 @@ public class ServerGroupCom<T> {
             SpreadGroup group = new SpreadGroup();
             group.join(connection,"Clientes");
             connection.add(c_listener);
+            stub.notifyLeader();
         }
         catch (Exception e){
             e.printStackTrace();

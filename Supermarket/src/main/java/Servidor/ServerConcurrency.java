@@ -89,7 +89,7 @@ public class ServerConcurrency implements StubRequest<StateUpdate>  {
                 switch (update.getType()){
                     case 0://criar enc
                         this.order_id = Math.max(this.order_id,update.getIdEnc() + 1);
-                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),0));
+                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),""));
                         break;
                     case 1://add prod
                         orders.addProduct(update.getIdEnc(),new Pair(update.getIdProdAdd(),update.getQntProdAdd()));
@@ -119,7 +119,7 @@ public class ServerConcurrency implements StubRequest<StateUpdate>  {
                 switch (update.getType()){
                     case 0://criar enc
                         this.order_id = Math.max(this.order_id,update.getIdEnc() + 1);
-                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),0));
+                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),""));
                         break;
                     case 1://add prod
                         orders.addProduct(update.getIdEnc(),new Pair(update.getIdProdAdd(),update.getQntProdAdd()));
@@ -158,7 +158,7 @@ public class ServerConcurrency implements StubRequest<StateUpdate>  {
                 switch (update.getType()){
                     case 0://criar enc
                         order_id = Math.max(update.getIdEnc()+1,order_id);
-                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),0));
+                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),""));
                         break;
                     case 1://add prod
                         orders.addProduct(update.getIdEnc(),new Pair(update.getIdProdAdd(),update.getQntProdAdd()));
@@ -442,5 +442,10 @@ public class ServerConcurrency implements StubRequest<StateUpdate>  {
         }
 
         return flag;
+    }
+
+    @Override
+    public void notifyLeader() {
+
     }
 }

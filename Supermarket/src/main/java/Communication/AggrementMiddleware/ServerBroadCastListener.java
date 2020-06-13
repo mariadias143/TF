@@ -166,6 +166,7 @@ public class ServerBroadCastListener<T> implements AdvancedMessageListener {
                 try{
                     l.lock();
                     stub.setStates(updates,this.pendingACK.stream().collect(Collectors.toList()));
+                    this.pendingACK = new ArrayList<>();
                     this.hasStarted = true;
                 }
                 finally {

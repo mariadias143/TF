@@ -89,7 +89,7 @@ public class ServerConcorrencyTestDAO implements StubRequest<StateUpdate>  {
                 switch (update.getType()){
                     case 0://criar enc
                         this.order_id = Math.max(this.order_id,update.getIdEnc() + 1);
-                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),0));
+                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),""));
                         break;
                     case 1://add prod
                         orders.addProduct(update.getIdEnc(),new Pair(update.getIdProdAdd(),update.getQntProdAdd()));
@@ -119,7 +119,7 @@ public class ServerConcorrencyTestDAO implements StubRequest<StateUpdate>  {
                 switch (update.getType()){
                     case 0://criar enc
                         this.order_id = Math.max(this.order_id,update.getIdEnc() + 1);
-                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),0));
+                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),""));
                         break;
                     case 1://add prod
                         orders.addProduct(update.getIdEnc(),new Pair(update.getIdProdAdd(),update.getQntProdAdd()));
@@ -158,7 +158,7 @@ public class ServerConcorrencyTestDAO implements StubRequest<StateUpdate>  {
                 switch (update.getType()){
                     case 0://criar enc
                         order_id = Math.max(update.getIdEnc()+1,order_id);
-                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),0));
+                        orders.put(update.getIdEnc(),new Encomenda(update.getIdEnc(),update.getUserId(),""));
                         break;
                     case 1://add prod
                         orders.addProduct(update.getIdEnc(),new Pair(update.getIdProdAdd(),update.getQntProdAdd()));
@@ -379,10 +379,18 @@ public class ServerConcorrencyTestDAO implements StubRequest<StateUpdate>  {
 
                 //lock nos produtos
                 List<Integer> prodIds = e.getProds().values().stream().map(a -> a.idProd).collect(Collectors.toList());
+                prodIds.sort((a,b) -> a - b);
+                for(int prodId : prodIds){
+                    while (this.concurrency_products.contains(prodId))
+                        this.transactionNotify.await();
+                    this.concurrency_products.add(prodId);
+
+                }
+                /**
                 while (prodIds.stream().map(a -> this.concurrency_products.contains(a)).anyMatch(btrue -> btrue))
                     this.transactionNotify.await();
 
-                this.concurrency_products.addAll(prodIds);
+                this.concurrency_products.addAll(prodIds);*/
 
                 boolean flag = true;
                 for(Pair val : e.getProds().values()){
@@ -437,5 +445,10 @@ public class ServerConcorrencyTestDAO implements StubRequest<StateUpdate>  {
         finally {
             l.unlock();
         }
+    }
+
+    @Override
+    public void notifyLeader() {
+
     }
 }

@@ -27,7 +27,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-
+/**
 public class ServerConcurrency implements StubRequest<StateUpdate>  {
     private ServerGroupCom com;
     private int timestamp = 0;
@@ -453,4 +453,4 @@ public class ServerConcurrency implements StubRequest<StateUpdate>  {
     public void timeout(int idEnc) {
 
     }
-}
+}*/

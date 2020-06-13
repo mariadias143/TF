@@ -188,7 +188,7 @@ public class ServerBroadCastListener<T> implements AdvancedMessageListener {
             //pedido para enviar o estado
             else if (queue.isLeader(this.id) && !this.id.equals(sender) && m.type.equals("ASKSTATE")){
                 System.out.println("Recebi pedido de copia do stado " + m.StubClock);
-                stub.transferState(m.StubClock,spreadMessage.getSender());
+                stub.transferState((T)m.info,spreadMessage.getSender());
             }
         }
         else if (spreadMessage.isRegular() && spreadMessage.isReliable()){

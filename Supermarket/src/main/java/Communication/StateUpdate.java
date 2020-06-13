@@ -45,6 +45,7 @@ public class StateUpdate{
     private int idProdAdd;
     private int qntProdAdd;
     private List<Pair> remProd;
+    private List<Integer> possibleTimestamps;
 
     /**
      * Construtor para state update da criação de uma encomenda
@@ -70,6 +71,7 @@ public class StateUpdate{
         this.idProdAdd = 0;
         this.qntProdAdd = 0;
         this.remProd = new ArrayList<>();
+        this.possibleTimestamps = new ArrayList<>();
     }
 
     public StateUpdate(int timestamp,int idEnc,int idProd,int qnt){
@@ -83,6 +85,7 @@ public class StateUpdate{
         this.idProdAdd = idProd;
         this.qntProdAdd = qnt;
         this.remProd = new ArrayList<>();
+        this.possibleTimestamps = new ArrayList<>();
     }
 
     public StateUpdate(int timestamp,int idEnc,List<Pair> items){
@@ -97,6 +100,7 @@ public class StateUpdate{
         this.qntProdAdd = 0;
         this.remProd = new ArrayList<>();
         items.forEach(a -> remProd.add(a));
+        this.possibleTimestamps = new ArrayList<>();
     }
 
     private StateUpdate(int timestamp,int idEnc){
@@ -110,6 +114,22 @@ public class StateUpdate{
         this.idProdAdd = 0;
         this.qntProdAdd = 0;
         this.remProd = new ArrayList<>();
+        this.possibleTimestamps = new ArrayList<>();
+    }
+
+    public StateUpdate(int timestamp,List<Integer> gaptimestamps){
+        this.timestamp = timestamp;
+        this.userId = "";
+        this.type = 1;
+        this.idEnc = idEnc;
+        this.begin = "";
+        this.actual="";
+        this.end="";
+        this.idProdAdd = 0;
+        this.qntProdAdd = 0;
+        this.remProd = new ArrayList<>();
+        gaptimestamps.forEach(a -> this.possibleTimestamps.add(a));
+        this.possibleTimestamps = new ArrayList<>();
     }
 
     public StateUpdate(){
@@ -120,6 +140,7 @@ public class StateUpdate{
         this.idProdAdd = 0;
         this.qntProdAdd = 0;
         this.remProd = new ArrayList<>();
+        this.possibleTimestamps = new ArrayList<>();
     }
 
     public static StateUpdate finishEncServer(int timestamp,int idEnc){
@@ -215,6 +236,8 @@ public class StateUpdate{
     public void setRemProd(List<Pair> remProd) {
         this.remProd = remProd;
     }
+
+    public List<Integer> getPossibleTimestamps() { return this.possibleTimestamps;}
 
 
     public void newTime() throws ParseException {

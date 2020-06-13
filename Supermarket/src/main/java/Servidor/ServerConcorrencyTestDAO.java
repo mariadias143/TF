@@ -73,16 +73,25 @@ public class ServerConcorrencyTestDAO implements StubRequest<StateUpdate>  {
     @Override
     public void askState() {
         CompletableFuture f = CompletableFuture.runAsync(() -> {
-            try{
-                l.lock();
-                System.out.println("Preciso do estado atualizado: ");
-                Mensagem<StateUpdate> rstate = new Mensagem<>("","ASKSTATE",null);
-                rstate.setClockStub(timestamp);
-                this.com.state_request(rstate);
+            //StateUpdate(int timestamp,List<Integer> gaptimestamps);
+            Set<Integer> timestamps = new HashSet<>(this.transactions.allTimestamp());
+            List<Integer> missing_timestamps = new ArrayList<>();
+
+
+            int maxtimestamp = timestamps.stream().max((a,b) -> a - b).orElse(0);
+            if (maxtimestamp != 0){
+                for(int i = 0; i <= maxtimestamp; i++){
+                    if (!timestamps.contains(i)){
+                        missing_timestamps.add(i);
+                    }
+                }
             }
-            finally {
-                l.unlock();
-            }
+            System.out.println(missing_timestamps);
+            StateUpdate st = new StateUpdate(timestamp,missing_timestamps);
+            System.out.println("Preciso do estado atualizado: ");
+            Mensagem<StateUpdate> rstate = new Mensagem<>("","ASKSTATE",st);
+            rstate.setClockStub(timestamp);
+            this.com.state_request(rstate);
         },this.write_pool);
     }
 
@@ -300,11 +309,11 @@ public class ServerConcorrencyTestDAO implements StubRequest<StateUpdate>  {
     }
 
     @Override
-    public void transferState(final int timestamp, SpreadGroup sender) {
+    public void transferState(StateUpdate st, SpreadGroup sender) {
         CompletableFuture f = CompletableFuture.runAsync(() ->  {
             try {
                 l.lock();
-                internalTransfer(timestamp,sender);
+                internalTransfer(st,sender);
             }
             finally {
                 l.unlock();
@@ -314,10 +323,18 @@ public class ServerConcorrencyTestDAO implements StubRequest<StateUpdate>  {
     }
 
     //melhorar para concorrência, possíveis buracos
-    private void internalTransfer(int timestamp, SpreadGroup sender){
+    private void internalTransfer(StateUpdate st, SpreadGroup sender){
         List<StateUpdate> lst = new ArrayList<>();
-        int i = timestamp;
+        int i = st.getTimestamp();
         System.out.println("Timestamp copy: " + i);
+        for(int k : st.getPossibleTimestamps()){
+            StateUpdate u = transactions.get(i);
+            if (u != null){
+                lst.add(u);
+            }
+        }
+
+
         while (i < this.timestamp){
             StateUpdate u = transactions.get(i);
             if (u != null){

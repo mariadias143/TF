@@ -9,7 +9,7 @@ public interface StubRequest<K> {
     void handleResponse(Mensagem o);
     void setState(K o,Mensagem m, SpreadGroup dest);
     void setStates(List<K> oldEvents,List<GenericPair<K,Mensagem>> queuedEvents);
-    void transferState(int timestamp, SpreadGroup sender);
+    void transferState(K o, SpreadGroup sender);
     void askState();
     void notifyLeader();
     void timeout(int idEnc);

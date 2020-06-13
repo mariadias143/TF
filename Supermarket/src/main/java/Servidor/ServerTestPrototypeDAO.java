@@ -80,7 +80,8 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
             try{
                 l.lock();
                 System.out.println("Preciso do estado atualizado: ");
-                Mensagem<StateUpdate> rstate = new Mensagem<>("","ASKSTATE",null);
+                StateUpdate st = new StateUpdate(timestamp,new ArrayList<>());
+                Mensagem<StateUpdate> rstate = new Mensagem<>("","ASKSTATE",st);
                 rstate.setClockStub(timestamp);
                 this.com.state_request(rstate);
             }
@@ -303,11 +304,11 @@ public class ServerTestPrototypeDAO implements StubRequest<StateUpdate>  {
     }
 
     @Override
-    public void transferState(final int timestamp, SpreadGroup sender) {
+    public void transferState(StateUpdate st, SpreadGroup sender) {
         CompletableFuture f = CompletableFuture.runAsync(() ->  {
             try {
                 l.lock();
-                internalTransfer(timestamp,sender);
+                internalTransfer(st.getTimestamp(),sender);
             }
             finally {
                 l.unlock();

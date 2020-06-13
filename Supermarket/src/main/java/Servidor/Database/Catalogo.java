@@ -18,9 +18,11 @@ public class Catalogo {
     private Connection con;
     // jdbc protocol - hsqldb type - file type - path to resource
     private String connectString = "jdbc:hsqldb:file:db-data/catalog";
+    private EncomendaDAO orders;
 
     public Catalogo(String name){
         this.connectString += name;
+        this.orders = new EncomendaDAO(connectString);
     }
 
     public void connectDB()throws Exception {
@@ -51,17 +53,25 @@ public class Catalogo {
                 con.createStatement().executeUpdate(povoarCatalogo);
                 con.commit();
             }
+          /*  sleep(100);
+            Produto pp = new Produto(15,"seita",5,20);
+            Encomenda ee = new Encomenda(1,"1","aa");
+            orders.put(1,ee);
+            orders.addProduct(1,new Pair(1,4));
+            orders.addProduct(1,new Pair(1,5));
+            System.out.println(orders.values());
+        */
 /*
+
+
             Produto pp = new Produto(15,"seita",5,20);
             Encomenda ee = new Encomenda(9,"1",0);
             //ee.addProd(1,4);
             // products.remove(17);
-            products.put(1,pp);
+
             products.updateStock(3,43);
 
-            orders.put(9,ee);
-            orders.addProduct(1,new Pair(1,4));
-            orders.addProduct(1,new Pair(1,5));
+
 
 
             StateUpdate su = new StateUpdate();

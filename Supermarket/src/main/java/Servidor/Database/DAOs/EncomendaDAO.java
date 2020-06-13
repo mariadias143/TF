@@ -8,10 +8,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class EncomendaDAO implements Map<Integer, Encomenda> {
 
@@ -83,7 +80,7 @@ public class EncomendaDAO implements Map<Integer, Encomenda> {
                 pst.setInt(1, (int) key);
                 ResultSet rss = pst.executeQuery();
                 while (rss.next()) {
-                    products.put((int) key,
+                    products.put( rss.getInt(2),
                             new Pair(rss.getInt(2),
                                     rss.getInt(3)
                             ));
@@ -103,7 +100,7 @@ public class EncomendaDAO implements Map<Integer, Encomenda> {
     public Encomenda put(Integer key, Encomenda value) {
         try {
             con = Connect.connect(this.connectString);
-            String sql = "insert into Encomenda (id, idUser,final) values (?, ?)";
+            String sql = "insert into Encomenda (id, idUser,final) values (?, ?,?)";
             PreparedStatement pst = con.prepareStatement(sql);
             pst.setInt(1, value.getIdEnc());
             pst.setString(2, value.getIdUser());
@@ -173,10 +170,43 @@ public class EncomendaDAO implements Map<Integer, Encomenda> {
 
     @Override
     public Collection<Encomenda> values() {
-        return null;
-    }
+        Collection encomendas = new ArrayList();
 
-    @Override
+        try {
+            con = Connect.connect(this.connectString);
+            String sql = "SELECT * FROM Encomenda ";
+            PreparedStatement pst = con.prepareStatement(sql);
+            ResultSet rs = pst.executeQuery();
+            while(rs.next()) {
+                Encomenda e = new Encomenda();
+                e.setIdEnc(rs.getInt(1));
+                e.setIdUser(rs.getString(2));
+                e.setEnd(rs.getString(3));
+
+                sql = "SELECT * FROM Encomenda_Produtos where idEnc = ?";
+                pst = con.prepareStatement(sql);
+                pst.setInt(1, e.getIdEnc());
+                ResultSet rss = pst.executeQuery();
+                Map<Integer, Pair> products = new HashMap<>();
+                while (rss.next()) {
+                    products.put((rss.getInt(2)),
+                            new Pair(rss.getInt(2),
+                                    rss.getInt(3)
+                            ));
+                }
+                e.setProds(products);
+                encomendas.add(e);
+
+            }
+
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return encomendas;
+    }
+        @Override
     public Set<Entry<Integer, Encomenda>> entrySet() {
         return null;
     }
